@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+
+# Все данные объектов и отчётов — не коммитить
+data/
+
+# Финансовые модели и документы
+*.xlsx
+*.xls
+*.docx
+*.doc
+*.pdf
+*.jpeg
+*.jpg
+*.png
+*.webp
+
+# Временные файлы
+temp/
+output/
+*.tmp
+
+# Ключи и секреты
+.env
+*.key
+
+# Системные папки Claude/Codex/Gemini
+.claude/
+.codex/
+.gemini/
+.agents
