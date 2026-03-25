@@ -1,0 +1,21 @@
+[main a4635f9] Auto-commit 2026-03-24 23:47
+ Committer: Zhutov Oleg <zhutovoleg@MacBook-Pro-Zhutov.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly. Run the
+following command and follow the instructions in your editor to edit
+your configuration file:
+
+    git config --global --edit
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 3 files changed, 58 insertions(+)
+ create mode 100755 tools/auto_git_push.sh
+ create mode 100644 tools/com.decosta.git-push.plist
+ create mode 100644 tools/git_push.log
+To https://github.com/olzhutov/Claude_work.git
+   f78d7cc..a4635f9  main -> main
+[2026-03-24 23:47] ✅ Push успешен
