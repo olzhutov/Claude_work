@@ -349,8 +349,8 @@ class Handler(BaseHTTPRequestHandler):
         qs = parse_qs(parsed.query)
 
         # ── Головна сторінка ──────────────────────────────────────────────────
-        if path in ("/", "/index.html", "/v2"):
-            file = HTML_FILE_V2 if path == "/v2" else HTML_FILE
+        if path in ("/", "/index.html", "/v1", "/v2"):
+            file = HTML_FILE if path == "/v1" else HTML_FILE_V2
             with open(file, "rb") as f:
                 body = f.read()
             self.send_response(200)

@@ -510,6 +510,86 @@ body {
 }
 .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
 .empty-state-text { font-size: 14px; }
+
+/* ── Toast ───────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--red); color: #fff;
+  padding: 10px 20px; border-radius: 10px;
+  font-size: 13px; font-weight: 500;
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s, transform .3s;
+  z-index: 999; white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Carry-over banner ───────────────────────────────────────────────────── */
+.carry-banner {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  background: var(--orange-lt);
+  border: 1px solid rgba(245,158,11,.35);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+.carry-banner-icon { font-size: 18px; flex-shrink: 0; }
+.carry-banner-text { flex: 1; color: #92400e; font-weight: 500; }
+.carry-banner-btn {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  background: var(--orange);
+  color: #fff;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.carry-banner-btn:hover { background: #d97706; }
+.carry-banner-dismiss {
+  background: none; border: none;
+  color: var(--muted); font-size: 16px;
+  cursor: pointer; padding: 2px 4px;
+  line-height: 1;
+}
+
+/* ── Mobile menu button ──────────────────────────────────────────────────── */
+.mobile-menu-btn {
+  display: none;
+  width: 32px; height: 32px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; cursor: pointer;
+  align-items: center; justify-content: center;
+  font-size: 18px; color: var(--muted);
+  flex-shrink: 0;
+}
+.sidebar-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 49;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); transition: transform .25s; }
+  .sidebar.mobile-open { transform: translateX(0); }
+  .sidebar-backdrop.mobile-open { display: block; }
+  .mobile-menu-btn { display: flex; }
+  .main { margin-left: 0; }
+  .task-columns { grid-template-columns: 1fr; }
+  .db-grid { grid-template-columns: 1fr 1fr; }
+  .db-projects-grid { grid-template-columns: 1fr; }
+  .topbar { padding: 0 14px; gap: 10px; }
+  .content { padding: 16px; }
+  .proj-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .week-title { font-size: 13px; }
+  .week-sub { font-size: 11px; }
+}
 </style>
 </head>
 <body>
@@ -539,6 +619,7 @@ body {
 
   <!-- Topbar -->
   <div class="topbar">
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()">☰</button>
     <div class="week-nav-btns">
       <button class="week-btn" id="prevWeek">‹</button>
       <button class="week-btn" id="nextWeek">›</button>
@@ -556,6 +637,14 @@ body {
 
   <!-- Content -->
   <div class="content">
+
+    <!-- ── Carry-over banner ── -->
+    <div class="carry-banner" id="carryBanner">
+      <span class="carry-banner-icon">📋</span>
+      <span class="carry-banner-text" id="carryBannerText"></span>
+      <button class="carry-banner-btn" onclick="doCarryOver()">Перенести</button>
+      <button class="carry-banner-dismiss" onclick="dismissCarryOver()" title="Закрити">×</button>
+    </div>
 
     <!-- ── Project view ── -->
     <div class="view" id="view-project">
@@ -630,6 +719,9 @@ body {
   </div>
 </div>
 
+<div id="toast" class="toast"></div>
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleMobileSidebar()"></div>
+
 <script>
 // ══════════════════════════════════════════════════════════════════════════════
 // STATE
@@ -642,6 +734,7 @@ let currentView  = 'dashboard';
 let saveTimer    = null;
 let dynN         = 12;
 let historyData  = [];
+let prevWeekDataForCarry = null;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INIT
@@ -654,6 +747,10 @@ async function init() {
   updateTopbar();
   renderSidebar();
   renderDashboard();
+  if (weekData.is_new) {
+    delete weekData.is_new;
+    await checkCarryOver();
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -673,13 +770,19 @@ async function saveWeek() {
   dot.textContent = '●'; dot.className = 'save-dot';
   const body = { ...weekData };
   delete body.is_new;
-  await fetch(`/api/week/${currentWeek}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  dot.textContent = '✓ Збережено'; dot.className = 'save-dot saved';
-  setTimeout(() => { dot.textContent = '●'; dot.className = 'save-dot'; }, 2000);
+  try {
+    await fetch(`/api/week/${currentWeek}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    dot.textContent = '✓ Збережено'; dot.className = 'save-dot saved';
+    setTimeout(() => { dot.textContent = '●'; dot.className = 'save-dot'; }, 2000);
+  } catch (e) {
+    dot.textContent = '⚠ Помилка'; dot.className = 'save-dot'; dot.style.color = 'var(--red)';
+    showToast('⚠️ Не вдалося зберегти. Повторна спроба через 5 сек...');
+    setTimeout(() => { dot.style.color = ''; saveWeek(); }, 5000);
+  }
 }
 
 function scheduleSave() {
@@ -807,7 +910,6 @@ function switchView(viewName, navEl) {
 
 function openProject(proj) {
   activeProj = proj;
-  // Update sidebar selection
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.querySelectorAll('.proj-nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.proj === proj);
@@ -816,6 +918,9 @@ function openProject(proj) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-project').classList.add('active');
   renderProjectView(proj);
+  // close sidebar on mobile after selecting project
+  document.querySelector('.sidebar').classList.remove('mobile-open');
+  document.getElementById('sidebarBackdrop').classList.remove('mobile-open');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1314,6 +1419,69 @@ async function saveProjects() {
 // ══════════════════════════════════════════════════════════════════════════════
 function exportDocx() {
   window.open(`/api/export/${currentWeek}`, '_blank');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════════════════════════════
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CARRY-OVER
+// ══════════════════════════════════════════════════════════════════════════════
+async function checkCarryOver() {
+  const prevWeek = shiftWeek(currentWeek, -1);
+  let prevData;
+  try { prevData = await fetch(`/api/week/${prevWeek}`).then(r => r.json()); }
+  catch { return; }
+  if (prevData.is_new || !prevData.entries) return;
+
+  let undoneCount = 0;
+  projects.forEach(proj => {
+    const prev = prevData.entries[proj];
+    if (!prev?.plan?.length) return;
+    const cancelled = new Set(prev.cancelled || []);
+    const done = new Set(prev.done || []);
+    undoneCount += prev.plan.filter(t => !cancelled.has(t) && !done.has(t)).length;
+  });
+
+  if (undoneCount > 0) {
+    prevWeekDataForCarry = prevData;
+    const banner = document.getElementById('carryBanner');
+    document.getElementById('carryBannerText').textContent =
+      `${undoneCount} незавершених завдань з минулого тижня`;
+    banner.style.display = 'flex';
+  }
+}
+
+function doCarryOver() {
+  if (!prevWeekDataForCarry) return;
+  carryOverFromWeek(prevWeekDataForCarry);
+  dismissCarryOver();
+  renderSidebar();
+  renderDashboard();
+  if (currentView === 'project' && activeProj) renderProjectView(activeProj);
+  scheduleSave();
+}
+
+function dismissCarryOver() {
+  document.getElementById('carryBanner').style.display = 'none';
+  prevWeekDataForCarry = null;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MOBILE SIDEBAR
+// ══════════════════════════════════════════════════════════════════════════════
+function toggleMobileSidebar() {
+  document.querySelector('.sidebar').classList.toggle('mobile-open');
+  document.getElementById('sidebarBackdrop').classList.toggle('mobile-open');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
