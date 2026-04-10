@@ -32,7 +32,7 @@ def main():
 
     parser.add_argument(
         "document",
-        help="Путь к исходному документу (PDF, изображение, текст) или папке объекта (структура data/objects/{id}/)",
+        help="Путь к исходному документу (PDF, изображение, текст) или папке объекта (Объекты/{Имя}/)",
     )
     parser.add_argument(
         "--category",
@@ -94,7 +94,7 @@ def main():
     if is_folder:
         object_id = get_object_id_from_path(str(document_path))
         print(f"Папка об'єкту: {object_id}")
-        output_dir_path = document_path / "output"
+        output_dir_path = document_path / "wiki"
     else:
         print(f"Документ: {document_path.name}")
         output_dir_path = Path(args.output_dir)

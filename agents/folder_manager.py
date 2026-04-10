@@ -1,104 +1,71 @@
 """
 Менеджер структуры папок объекта.
-Управляет созданием и навигацией по структуре: raw/ → extracted/ → output/
+Работает с архитектурой Объекты/{Имя}/ — сырые файлы в корне, аналитика в wiki/.
 """
 
 import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
+# Расширения файлов, которые считаются сырыми документами
+RAW_EXTENSIONS = {
+    ".pdf", ".docx", ".xlsx", ".xls", ".doc",
+    ".txt", ".csv", ".md",
+    ".jpg", ".jpeg", ".png", ".webp", ".gif",
+}
 
-def create_object_folder(object_id: str, base_path: str = "data/objects") -> Path:
-    """
-    Создаёт структуру папок для объекта недвижимости.
-
-    Args:
-        object_id: ID объекта (например, "warehouse_kyiv_001")
-        base_path: Базовая директория для объектов
-
-    Returns:
-        Path к созданной папке объекта
-
-    Структура:
-        base_path/
-        └── object_id/
-            ├── raw/
-            │   ├── documents/
-            │   ├── photos/
-            │   └── plans/
-            ├── extracted/
-            └── output/
-    """
-
-    object_dir = Path(base_path) / object_id
-
-    # Создаём все поддиректории
-    (object_dir / "raw" / "documents").mkdir(parents=True, exist_ok=True)
-    (object_dir / "raw" / "photos").mkdir(parents=True, exist_ok=True)
-    (object_dir / "raw" / "plans").mkdir(parents=True, exist_ok=True)
-    (object_dir / "extracted").mkdir(parents=True, exist_ok=True)
-    (object_dir / "output").mkdir(parents=True, exist_ok=True)
-
-    return object_dir
+# Папки внутри объекта, которые НЕ являются сырыми файлами
+EXCLUDED_DIRS = {"wiki", ".obsidian", ".DS_Store"}
 
 
 def is_object_folder(folder_path: str) -> bool:
     """
-    Проверяет что папка имеет структуру объекта (есть raw/, extracted/, output/).
+    Проверяет, что папка является объектом в архитектуре Объекты/.
+    Критерий: папка существует и содержит wiki/ подпапку.
     """
     folder = Path(folder_path)
-    return (
-        (folder / "raw").is_dir()
-        and (folder / "extracted").is_dir()
-        and (folder / "output").is_dir()
-    )
+    return folder.is_dir() and (folder / "wiki").is_dir()
 
 
-def list_raw_files(
-    folder_path: str, subfolder: Optional[str] = None
-) -> List[Path]:
+def list_raw_files(folder_path: str, subfolder: Optional[str] = None) -> List[Path]:
     """
-    Возвращает список файлов из raw/ директории.
+    Возвращает список сырых файлов из корня папки объекта.
+    Игнорирует папку wiki/ и служебные директории.
 
     Args:
-        folder_path: Путь к папке объекта
-        subfolder: Опциональная поддиректория (documents, photos, plans)
+        folder_path: Путь к папке объекта (Объекты/{Имя}/)
+        subfolder: Игнорируется в новой архитектуре (для совместимости)
 
     Returns:
-        Список Path объектов к файлам
+        Список Path к файлам
     """
     folder = Path(folder_path)
 
-    if subfolder:
-        raw_dir = folder / "raw" / subfolder
-    else:
-        raw_dir = folder / "raw"
-
-    if not raw_dir.exists():
+    if not folder.exists():
         return []
 
-    # Возвращаем все файлы рекурсивно
     files = []
-    for file_path in raw_dir.rglob("*"):
-        if file_path.is_file():
+    for file_path in folder.iterdir():
+        # Пропускаем директории и служебные файлы
+        if file_path.is_dir():
+            continue
+        if file_path.name.startswith("."):
+            continue
+        if file_path.suffix.lower() in RAW_EXTENSIONS:
             files.append(file_path)
 
     return sorted(files)
 
 
 def get_extracted_path(folder_path: str) -> Path:
-    """Возвращает путь к файлу property_data.json."""
+    """Возвращает путь к property_data.json (в wiki/financials/)."""
     folder = Path(folder_path)
-    return folder / "extracted" / "property_data.json"
+    return folder / "wiki" / "financials" / "property_data.json"
 
 
 def save_extracted_data(folder_path: str, data: Dict[str, Any]) -> Path:
     """
-    Сохраняет извлечённые данные в JSON файл.
-
-    Args:
-        folder_path: Путь к папке объекта
-        data: Словарь с данными PropertyData
+    Сохраняет извлечённые данные в wiki/financials/property_data.json.
 
     Returns:
         Path к сохранённому файлу
@@ -114,7 +81,7 @@ def save_extracted_data(folder_path: str, data: Dict[str, Any]) -> Path:
 
 def load_extracted_data(folder_path: str) -> Optional[Dict[str, Any]]:
     """
-    Загружает извлечённые данные из JSON файла.
+    Загружает извлечённые данные из wiki/financials/property_data.json.
 
     Returns:
         Dict с данными или None если файл не найден
@@ -130,27 +97,28 @@ def load_extracted_data(folder_path: str) -> Optional[Dict[str, Any]]:
 
 def get_output_path(folder_path: str, filename: str) -> Path:
     """
-    Возвращает путь для файла в output/.
+    Возвращает путь для выходного файла в wiki/.
 
-    Args:
-        folder_path: Путь к папке объекта
-        filename: Имя выходного файла (например, "info_brief.md")
-
-    Returns:
-        Path к файлу в output/
+    Маппинг по расширениям:
+        .md   → wiki/objects/{filename}
+        .txt  → wiki/financials/{filename}
+        .pptx → wiki/{filename}
+        rest  → wiki/{filename}
     """
     folder = Path(folder_path)
-    return folder / "output" / filename
+    suffix = Path(filename).suffix.lower()
+
+    if suffix == ".md":
+        return folder / "wiki" / "objects" / filename
+    elif suffix == ".txt":
+        return folder / "wiki" / "financials" / filename
+    else:
+        return folder / "wiki" / filename
 
 
 def save_output_file(folder_path: str, filename: str, content: str) -> Path:
     """
-    Сохраняет выходной файл.
-
-    Args:
-        folder_path: Путь к папке объекта
-        filename: Имя файла
-        content: Содержимое
+    Сохраняет выходной текстовый файл.
 
     Returns:
         Path к сохранённому файлу
@@ -166,30 +134,52 @@ def save_output_file(folder_path: str, filename: str, content: str) -> Path:
 
 def get_object_id_from_path(folder_path: str) -> str:
     """
-    Извлекает ID объекта из пути.
+    Извлекает имя объекта из пути.
 
     Примеры:
-        "data/objects/warehouse_kyiv_001" → "warehouse_kyiv_001"
-        "/full/path/to/warehouse_kyiv_001" → "warehouse_kyiv_001"
+        "Объекты/Владимирская_8" → "Владимирская_8"
+        "/full/path/Объекты/Фастов_Брандта50" → "Фастов_Брандта50"
     """
     folder = Path(folder_path)
     return folder.name
 
 
+def create_object_folder(object_name: str, base_path: str = "Объекты") -> Path:
+    """
+    Создаёт структуру папок для нового объекта в архитектуре Объекты/.
+
+    Args:
+        object_name: Имя объекта (например, "Владимирская_8")
+        base_path: Базовая директория
+
+    Returns:
+        Path к созданной папке объекта
+
+    Структура:
+        Объекты/
+        └── object_name/
+            └── wiki/
+                ├── objects/
+                ├── tenants/
+                ├── contracts/
+                ├── financials/
+                └── topics/
+    """
+    object_dir = Path(base_path) / object_name
+
+    for subdir in ["objects", "tenants", "contracts", "financials", "topics"]:
+        (object_dir / "wiki" / subdir).mkdir(parents=True, exist_ok=True)
+
+    return object_dir
+
+
 if __name__ == "__main__":
-    # Пример использования
-    obj_path = create_object_folder("warehouse_test_001")
-    print(f"Создана папка: {obj_path}")
-
-    # Список файлов в documents/
-    docs = list_raw_files(str(obj_path), "documents")
-    print(f"Файлы в documents/: {docs}")
-
-    # Сохранить данные
-    test_data = {"property_name": "Тест", "gba": 5000}
-    saved_path = save_extracted_data(str(obj_path), test_data)
-    print(f"Сохранены данные в: {saved_path}")
-
-    # Загрузить данные
-    loaded_data = load_extracted_data(str(obj_path))
-    print(f"Загруженные данные: {loaded_data}")
+    import sys
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+        print(f"Объект: {get_object_id_from_path(path)}")
+        print(f"Это папка объекта: {is_object_folder(path)}")
+        files = list_raw_files(path)
+        print(f"Сырые файлы ({len(files)}):")
+        for f in files:
+            print(f"  {f.name}")

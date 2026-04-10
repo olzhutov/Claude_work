@@ -289,21 +289,17 @@ def extract_from_folder(folder_path: str) -> PropertyData:
     from folder_manager import list_raw_files, get_object_id_from_path
 
     folder = Path(folder_path)
-    raw_dir = folder / "raw"
 
-    if not raw_dir.exists():
-        raise FileNotFoundError(f"Папка {raw_dir} не найдена")
-
-    # Получаем все файлы из raw/
+    # Получаем все сырые файлы из корня папки объекта
     raw_files = list_raw_files(str(folder))
 
     if not raw_files:
-        raise FileNotFoundError(f"Файлы не найдены в {raw_dir}")
+        raise FileNotFoundError(f"Файлы не найдены в {folder}")
 
     # Собираем содержимое всех файлов
     combined_content = []
     for file_path in raw_files:
-        rel_path = file_path.relative_to(raw_dir)
+        rel_path = file_path.relative_to(folder)
         combined_content.append(f"=== {rel_path} ===\n")
 
         try:
@@ -381,6 +377,20 @@ def extract_from_folder(folder_path: str) -> PropertyData:
     if "source_file" not in data:
         data["source_file"] = str(folder_path)
 
+    # Збагачення верифікованими площами з документів БТІ
+    try:
+        from bti_reader import read_bti_areas
+        bti_data = read_bti_areas(str(folder))
+        if bti_data and bti_data["total_area"] > 0:
+            data["gba"] = bti_data["total_area"]
+            data["bti_data"] = bti_data
+            notes = data.get("extraction_notes", "")
+            data["extraction_notes"] = (
+                notes + f" | БТІ верифіковано: {bti_data['total_area']} м²"
+            ).lstrip(" | ")
+    except Exception:
+        pass  # БТІ недоступний — продовжуємо без нього
+
     return data
 
 
@@ -396,7 +406,8 @@ if __name__ == "__main__":
     path_obj = Path(path)
 
     # Проверяем что это — папка с объектом или файл
-    if path_obj.is_dir() and (path_obj / "raw").exists():
+    from folder_manager import is_object_folder
+    if path_obj.is_dir() and is_object_folder(str(path_obj)):
         print(f"Обработка папки объекта: {path}")
         data = extract_from_folder(path)
     else:

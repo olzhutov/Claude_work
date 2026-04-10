@@ -205,6 +205,84 @@ class PipelineConfig(TypedDict):
     """Базовая валюта: "USD" или "UAH" """
 
 
+class BtiRoom(TypedDict):
+    """Одне приміщення з експлікації БТІ."""
+
+    id: str
+    """Номер приміщення: "1", "2а", "16" """
+
+    name: str
+    """Назва: "кімната", "коридор", "санвузол", "сходи" """
+
+    area: float
+    """Площа, м²"""
+
+    area_type: str
+    """Тип площі: "основна" / "допоміжна" """
+
+    source: str
+    """Справа/блок звідки взято: "Справа №1 — МЗК" """
+
+
+class BtiSprava(TypedDict):
+    """Одна Справа (секція) технічного паспорту БТІ."""
+
+    name: str
+    """Назва: "Справа №1 — МЗК", "Справа №2 — підвал" """
+
+    total_area: float
+    """Загальна площа Справи, м²"""
+
+    usable_area: float
+    """Корисна (основна) площа, м²"""
+
+    auxiliary_area: float
+    """Допоміжна площа, м²"""
+
+    rooms: list
+    """Список приміщень (list[BtiRoom])"""
+
+
+class BtiAreaData(TypedDict):
+    """
+    Верифіковані дані про площі об'єкта з документів БТІ.
+    Пріоритет: експлікація > ДРРП > план/креслення.
+    """
+
+    total_area: float
+    """Загальна площа по всіх Справах, м²"""
+
+    usable_area: float
+    """Корисна площа, м²"""
+
+    auxiliary_area: float
+    """Допоміжна площа, м²"""
+
+    spravy: list
+    """Список всіх Справ (list[BtiSprava])"""
+
+    drrp_area: Optional[float]
+    """Площа за Витягом ДРРП (якщо є), м²"""
+
+    drrp_match: Optional[bool]
+    """True якщо БТІ ≈ ДРРП (±0.5 м²)"""
+
+    discrepancies: list
+    """Розбіжності план ≠ експлікація: [{"room": "...", "plan": X, "expl": Y}]"""
+
+    source_files: list
+    """Файли, які були прочитані"""
+
+    bti_date: Optional[str]
+    """Дата технічного паспорту"""
+
+    confidence: str
+    """Впевненість: "high" / "medium" / "low" """
+
+    notes: str
+    """Примітки: що знайдено, що відсутнє"""
+
+
 class AnalysisMetrics(TypedDict):
     """
     Результаты финансового анализа (из cre_analyzer.py).

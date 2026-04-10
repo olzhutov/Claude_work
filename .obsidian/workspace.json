@@ -1,0 +1,234 @@
+{
+  "main": {
+    "id": "1947da3ab37488b5",
+    "type": "split",
+    "children": [
+      {
+        "id": "e99a66d0f03a10a2",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "89547ec64edd658d",
+            "type": "leaf",
+            "state": {
+              "type": "image",
+              "state": {
+                "file": "Объекты/Владимирская_8/Акт1.jpeg"
+              },
+              "icon": "lucide-image",
+              "title": "Акт1"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "6ad57289b5f10fd4",
+    "type": "split",
+    "children": [
+      {
+        "id": "0097fe1fb6e4b344",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a76bafe3ab335dee",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Файловый менеджер"
+            }
+          },
+          {
+            "id": "cfbe49cdaf7d0c99",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Поиск"
+            }
+          },
+          {
+            "id": "e4513adb2b8a2cae",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Закладки"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "7f4df387a4a36db0",
+    "type": "split",
+    "children": [
+      {
+        "id": "37ee3cf81d370fc4",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "494432cdd9765c3d",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Объекты/Владимирская_8/Акт1.jpeg",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Обратные ссылки для Акт1"
+            }
+          },
+          {
+            "id": "8038d034f25fd207",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Объекты/Владимирская_8/Акт1.jpeg",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Исходящие ссылки из Акт1"
+            }
+          },
+          {
+            "id": "ef5d163efd47c994",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Теги"
+            }
+          },
+          {
+            "id": "7724bf5211a9a591",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Все свойства"
+            }
+          },
+          {
+            "id": "d0f7d56d6edb2921",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Объекты/Владимирская_8/Акт1.jpeg",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Структура Акт1"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Меню быстрого перехода": false,
+      "graph:Граф": false,
+      "canvas:Создать новый холст": false,
+      "daily-notes:Сегодняшняя заметка": false,
+      "templates:Вставить шаблон": false,
+      "command-palette:Открыть палитру команд": false,
+      "bases:Создать новую базу": false,
+      "terminal:Open terminal": false
+    }
+  },
+  "active": "89547ec64edd658d",
+  "lastOpenFiles": [
+    "Объекты/Владимирская_8/wiki/topics/Охоронний_статус_Володимирська_8.md",
+    "Объекты/Владимирская_8/wiki/topics/Ланцюг_власників_Володимирська_8.md",
+    "Объекты/Владимирская_8/wiki/tenants/Інфоком_Премісес.md",
+    "Объекты/Владимирская_8/wiki/tenants/Вектор_Плюс_та_Controlware.md",
+    "Объекты/Владимирская_8/wiki/objects/Нежитловий_будинок_Володимирська_8.md",
+    "Объекты/Владимирская_8/wiki/financials/Пропозиція_купівлі_Де_Коста_Груп.md",
+    "Объекты/index.md",
+    "Объекты/Lebedyovka/wiki/topics",
+    "Объекты/Lebedyovka/wiki/tenants",
+    "Объекты/Lebedyovka/wiki/objects",
+    "Объекты/Lebedyovka/wiki/financials",
+    "Объекты/Lebedyovka/wiki/contracts",
+    "Объекты/Lebedyovka/wiki",
+    "Объекты/Lebedyovka",
+    "Объекты/Владимирская_8/Orenda-premialnogo-osobnyaka-na-Volodimirskij-8.pdf",
+    "Объекты/Владимирская_8/info_brief 2.pdf",
+    "Объекты/Владимирская_8/info_brief 2.docx",
+    "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.26.jpeg",
+    "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25.jpeg",
+    "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (4).jpeg",
+    "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (3).jpeg",
+    "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (2).jpeg",
+    "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (1).jpeg",
+    "Объекты/Владимирская_8/WhatsApp Image 2026-04-02 at 09.12.53.jpeg",
+    "Объекты/Владимирская_8/Акт1.jpeg",
+    "Объекты/Фастов_Брандта50/wiki/objects/Майновий_комплекс_Фастів_Бранта_50.md",
+    "Объекты/Добро пожаловать.md",
+    "Объекты/Фастов_Брандта50/wiki/financials/Потенційні_клієнти_Бранта_50.md",
+    "Объекты/Фастов_Брандта50/wiki/contracts/Договір_КП_2238_Брандта_50_2025.md",
+    "Объекты/log.md",
+    "Объекты/Фастов_Брандта50/wiki/topics/Юридичні_ризики_Бранта_50.md",
+    "Объекты/Фастов_Брандта50/wiki/topics/Схема_угоди_оренда_викуп.md",
+    "Объекты/Фастов_Брандта50/wiki/topics/Судова_справа_911_824_26.md",
+    "Объекты/Фастов_Брандта50/wiki/topics/Ланцюг_власників_Бранта_50.md",
+    "Объекты/Фастов_Брандта50/wiki/tenants/Атлас_Технолоджи_Груп.md",
+    "Объекты/Фастов_Брандта50/wiki/tenants/Атлас_Інвест_Буд.md",
+    "Объекты/Фастов_Брандта50/Снимок экрана 2026-04-02 в 12.51.59.png",
+    "Объекты/Фастов_Брандта50/Снимок экрана 2026-04-02 в 12.52.27.png",
+    "Объекты/Фастов_Брандта50/Судова_справа_911_824_26.md",
+    "Объекты/Фастов_Брандта50/Схема_угоди_оренда_викуп.md",
+    "Объекты/Фастов_Брандта50/Юридичні_ризики_Бранта_50.md",
+    "Объекты/Фастов_Брандта50/Ланцюг_власників_Бранта_50.md",
+    "Объекты/Фастов_Брандта50/Атлас_Інвест_Буд.md",
+    "Объекты/Фастов_Брандта50/Атлас_Технолоджи_Груп.md",
+    "Объекты/Фастов_Брандта50/Майновий_комплекс_Фастів_Бранта_50.md",
+    "Объекты/Фастов_Брандта50/Договір_КП_2238_Брандта_50_2025.md"
+  ]
+}
