@@ -11,14 +11,12 @@
             "id": "89547ec64edd658d",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "pdf",
               "state": {
-                "file": "Объекты/Inbox/notes.md",
-                "mode": "source",
-                "source": false
+                "file": "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf"
               },
-              "icon": "lucide-file",
-              "title": "notes"
+              "icon": "lucide-file-text",
+              "title": "2026-04-11_10-37-02_47_Техпаспорт"
             }
           }
         ]
@@ -94,7 +92,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Объекты/Inbox/notes.md",
+                "file": "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +102,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для notes"
+              "title": "Обратные ссылки для 2026-04-11_10-37-02_47_Техпаспорт"
             }
           },
           {
@@ -113,12 +111,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Объекты/Inbox/notes.md",
+                "file": "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из notes"
+              "title": "Исходящие ссылки из 2026-04-11_10-37-02_47_Техпаспорт"
             }
           },
           {
@@ -156,13 +154,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Объекты/Inbox/notes.md",
+                "file": "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура notes"
+              "title": "Структура 2026-04-11_10-37-02_47_Техпаспорт"
             }
           }
         ]
@@ -187,9 +185,16 @@
   },
   "active": "89547ec64edd658d",
   "lastOpenFiles": [
+    "Объекты/Inbox/photos/2026-04-11_10-35-56_38.jpg",
+    "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf",
+    "Объекты/Inbox/files",
+    "Объекты/Inbox/photos/2026-04-11_10-35-56_37.jpg",
+    "Объекты/Inbox/notes.md",
+    "Объекты/Inbox/photos/2026-04-11_10-35-56_39.jpg",
+    "Объекты/Inbox/photos/2026-04-11_10-35-56_40.jpg",
+    "Объекты/Inbox/photos/2026-04-11_10-35-56_41.jpg",
     "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg",
     "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
-    "Объекты/Inbox/notes.md",
     "AGENTS_README.md",
     "agents/telegram_bridge.py",
     "Объекты/Inbox/photos",
@@ -208,15 +213,8 @@
     "Объекты/Lebedyovka/wiki/tenants",
     "Объекты/Lebedyovka/wiki/objects",
     "Объекты/Lebedyovka/wiki/financials",
-    "Объекты/Lebedyovka/wiki/contracts",
-    "Объекты/Lebedyovka/wiki",
     "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.26.jpeg",
     "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25.jpeg",
-    "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (4).jpeg",
-    "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (3).jpeg",
-    "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (2).jpeg",
-    "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (1).jpeg",
-    "Объекты/Владимирская_8/WhatsApp Image 2026-04-02 at 09.12.53.jpeg",
     "Объекты/Фастов_Брандта50/wiki/objects/Майновий_комплекс_Фастів_Бранта_50.md",
     "Объекты/Добро пожаловать.md",
     "Объекты/Фастов_Брандта50/wiki/financials/Потенційні_клієнти_Бранта_50.md",
@@ -228,7 +226,6 @@
     "Объекты/Фастов_Брандта50/wiki/topics/Ланцюг_власників_Бранта_50.md",
     "Объекты/Фастов_Брандта50/wiki/tenants/Атлас_Технолоджи_Груп.md",
     "Объекты/Фастов_Брандта50/wiki/tenants/Атлас_Інвест_Буд.md",
-    "Объекты/Фастов_Брандта50/Снимок экрана 2026-04-02 в 12.51.59.png",
     "Объекты/Фастов_Брандта50/Судова_справа_911_824_26.md",
     "Объекты/Фастов_Брандта50/Схема_угоди_оренда_викуп.md",
     "Объекты/Фастов_Брандта50/Юридичні_ризики_Бранта_50.md",

@@ -146,6 +146,44 @@ async def handle_photo(message: Message) -> None:
     await message.answer(f"✓ Фото сохранено: `{filename}`", parse_mode="Markdown")
 
 
+@dp.message(F.document)
+async def handle_document(message: Message) -> None:
+    uid = message.from_user.id
+
+    if not _is_allowed(uid):
+        log.warning(f"[BLOCKED document] user_id={uid}")
+        return
+
+    doc = message.document
+    mime = doc.mime_type or ""
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    orig_name = doc.file_name or "file"
+
+    if mime.startswith("image/"):
+        # Изображение, отправленное без сжатия → в photos/
+        save_dir = PHOTOS_DIR
+        filename = f"{timestamp}_{message.message_id}_{orig_name}"
+        category = "photo-doc"
+    else:
+        # Любой другой документ (PDF, DOCX, XLSX…) → в files/
+        files_dir = INBOX_DIR / "files"
+        files_dir.mkdir(parents=True, exist_ok=True)
+        save_dir = files_dir
+        filename = f"{timestamp}_{message.message_id}_{orig_name}"
+        category = "file"
+
+    save_path = save_dir / filename
+
+    file = await bot.get_file(doc.file_id)
+    await bot.download_file(file.file_path, destination=save_path)
+
+    if message.caption:
+        _append_note(f"📎 {filename}\n\n{message.caption.strip()}", source=category)
+
+    log.info(f"[{category.upper()}] Сохранено: {save_path}")
+    await message.answer(f"✓ Файл сохранён: `{filename}`", parse_mode="Markdown")
+
+
 # --- Запуск ---
 
 async def main() -> None:
