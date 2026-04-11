@@ -131,7 +131,9 @@ async def handle_photo(message: Message) -> None:
     # Берём самое большое фото
     photo = message.photo[-1]
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"{timestamp}.jpg"
+    # file_unique_id гарантированно уникален для каждого файла в Telegram
+    unique = photo.file_unique_id[-6:]
+    filename = f"{timestamp}_{unique}.jpg"
     save_path = PHOTOS_DIR / filename
 
     # Скачиваем файл

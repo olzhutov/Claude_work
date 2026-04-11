@@ -13,10 +13,10 @@
             "state": {
               "type": "image",
               "state": {
-                "file": "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg"
+                "file": "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg"
               },
               "icon": "lucide-image",
-              "title": "2026-04-11_10-21-44"
+              "title": "2026-04-11_10-26-47_uO0Up-"
             }
           }
         ]
@@ -76,7 +76,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 373.5
   },
   "right": {
     "id": "7f4df387a4a36db0",
@@ -92,7 +92,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
+                "file": "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +102,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для 2026-04-11_10-21-44"
+              "title": "Обратные ссылки для 2026-04-11_10-26-47_uO0Up-"
             }
           },
           {
@@ -111,12 +111,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
+                "file": "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из 2026-04-11_10-21-44"
+              "title": "Исходящие ссылки из 2026-04-11_10-26-47_uO0Up-"
             }
           },
           {
@@ -154,13 +154,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
+                "file": "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура 2026-04-11_10-21-44"
+              "title": "Структура 2026-04-11_10-26-47_uO0Up-"
             }
           }
         ]
@@ -183,10 +183,11 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "a76bafe3ab335dee",
+  "active": "89547ec64edd658d",
   "lastOpenFiles": [
-    "Объекты/Inbox/notes.md",
     "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
+    "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg",
+    "Объекты/Inbox/notes.md",
     "AGENTS_README.md",
     "agents/telegram_bridge.py",
     "Объекты/Inbox/photos",
