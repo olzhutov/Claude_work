@@ -373,12 +373,33 @@ def extract_fields(text: str, category: str) -> dict | None:
 # Крок 3: Збагачення [B1, C2]
 # ---------------------------------------------------------------------------
 
+_DEAL_TYPE_MAP: dict[str, str] = {
+    "sale": "Sale", "продаж": "Sale", "продажа": "Sale",
+    "rent": "Rent", "оренда": "Rent", "аренда": "Rent",
+}
+
+
+def _normalize_deal_type(raw: str | None) -> str:
+    """Нормалізує Deal_Type до суворих значень Sale/Rent."""
+    if not raw:
+        return "Sale"
+    lower = str(raw).lower().strip()
+    return _DEAL_TYPE_MAP.get(lower, "Sale")
+
+
 def enrich(extracted: dict, category: str) -> dict:
     r        = dict(extracted)
     currency = r.get("Price_Currency") or "USD"
     area     = r.get("Area")
     discount = DISCOUNT_RATES.get(category, 0.05)
-    deal     = r.get("Deal_Type", "Sale")
+
+    # ── Суворе примусове значення Object_Type (тільки англійські категорії) ──
+    r["Object_Type"] = category
+
+    # ── Нормалізація Deal_Type: тільки Sale або Rent ─────────────────────────
+    raw_deal = r.get("Deal_Type")
+    deal = _normalize_deal_type(raw_deal)
+    r["Deal_Type"] = deal
 
     def to_usd(val: float | None) -> float | None:
         if val is None:
