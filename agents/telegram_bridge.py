@@ -124,40 +124,61 @@ def _build_session_keyboard(session: str) -> InlineKeyboardMarkup | None:
     ]])
 
 
-def _find_summary_file(project_name: str) -> Path | None:
+BINARY_EXTS = {".pdf", ".doc", ".docx", ".xls", ".xlsx"}
+TEXT_EXTS   = {".md", ".txt"}
+TG_MSG_LIMIT = 4096
+
+
+def _collect_summary_items(project_name: str) -> tuple[list[Path], list[Path]]:
     """
-    Ищет главный файл-сводку в папке проекта.
-    Приоритет:
-      1. wiki/info_brief.md
-      2. wiki/objects/*.md (первый по алфавиту)
-      3. Любой *.pdf в корне проекта
-      4. Любой *.md в корне проекта (кроме notes.md)
+    Собирает файлы для сводки:
+      binary_docs — .pdf/.doc/.docx/.xls/.xlsx из корня папки проекта
+      text_files  — wiki/info_brief.md, затем wiki/objects/*.md (или *.md из корня)
+    Возвращает (binary_docs, text_files).
     """
     project_dir = OBJECTS_DIR / project_name
 
-    # 1. wiki/info_brief.md
-    candidate = project_dir / "wiki" / "info_brief.md"
-    if candidate.exists():
-        return candidate
+    # --- Бинарные документы из корня ---
+    binary_docs = sorted(
+        p for p in project_dir.iterdir()
+        if p.is_file() and p.suffix.lower() in BINARY_EXTS
+    )
 
-    # 2. wiki/objects/*.md
-    objects_dir = project_dir / "wiki" / "objects"
-    if objects_dir.is_dir():
-        mds = sorted(objects_dir.glob("*.md"))
-        if mds:
-            return mds[0]
+    # --- Текстовые сводки ---
+    text_files: list[Path] = []
 
-    # 3. *.pdf в корне
-    pdfs = sorted(project_dir.glob("*.pdf"))
-    if pdfs:
-        return pdfs[0]
+    # 1. wiki/info_brief.md — главный приоритет
+    info_brief = project_dir / "wiki" / "info_brief.md"
+    if info_brief.exists():
+        text_files.append(info_brief)
+    else:
+        # 2. wiki/objects/*.md
+        objects_dir = project_dir / "wiki" / "objects"
+        if objects_dir.is_dir():
+            text_files.extend(sorted(objects_dir.glob("*.md")))
 
-    # 4. *.md в корне (кроме notes.md)
-    for md in sorted(project_dir.glob("*.md")):
-        if md.name != "notes.md":
-            return md
+        # 3. *.md / *.txt в корне (кроме notes.md)
+        if not text_files:
+            for p in sorted(project_dir.iterdir()):
+                if p.is_file() and p.suffix.lower() in TEXT_EXTS and p.name != "notes.md":
+                    text_files.append(p)
 
-    return None
+    return binary_docs, text_files
+
+
+def _split_text(text: str, limit: int = TG_MSG_LIMIT) -> list[str]:
+    """Разбивает длинный текст на части, не превышающие лимит Telegram."""
+    parts = []
+    while len(text) > limit:
+        # Ищем последний перенос строки в пределах лимита
+        split_at = text.rfind("\n", 0, limit)
+        if split_at == -1:
+            split_at = limit
+        parts.append(text[:split_at])
+        text = text[split_at:].lstrip("\n")
+    if text:
+        parts.append(text)
+    return parts
 
 
 def _resolve_save_paths(session: str, filename: str, is_image: bool) -> Path:
@@ -302,18 +323,34 @@ async def cb_get_summary(callback: CallbackQuery) -> None:
     project_name = callback.data.removeprefix("summary:")
     await callback.answer()
 
-    summary_file = _find_summary_file(project_name)
+    binary_docs, text_files = _collect_summary_items(project_name)
 
-    if summary_file is None:
-        await callback.message.answer("Отчёт для этого объекта пока не сформирован.")
-        log.info(f"[SUMMARY] Файл не найден для {project_name}")
+    if not binary_docs and not text_files:
+        await callback.message.answer("Документов или справок пока нет.")
+        log.info(f"[SUMMARY] Ничего не найдено для {project_name}")
         return
 
-    log.info(f"[SUMMARY] Отправляю: {summary_file}")
-    await callback.message.answer_document(
-        FSInputFile(summary_file, filename=summary_file.name),
-        caption=f"📄 {project_name} — {summary_file.name}",
-    )
+    # --- Отправка бинарных документов ---
+    for doc_path in binary_docs:
+        log.info(f"[SUMMARY] Документ → {doc_path.name}")
+        await callback.message.answer_document(
+            FSInputFile(doc_path, filename=doc_path.name),
+            caption=f"📎 {doc_path.name}",
+        )
+
+    # --- Отправка текстовых сводок ---
+    for txt_path in text_files:
+        log.info(f"[SUMMARY] Текст → {txt_path.name}")
+        content = txt_path.read_text(encoding="utf-8").strip()
+        if not content:
+            continue
+        header = f"📄 *{txt_path.name}*\n\n"
+        parts = _split_text(header + content)
+        for i, part in enumerate(parts):
+            await callback.message.answer(
+                part,
+                parse_mode="Markdown" if i == 0 else None,
+            )
 
 
 @dp.message(F.text)
