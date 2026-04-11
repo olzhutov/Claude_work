@@ -4,6 +4,7 @@
     "cssclasses": "multitext",
     "tags": "tags",
     "Price": "number",
-    "Area": "number"
+    "Area": "number",
+    "": "number"
   }
 }
