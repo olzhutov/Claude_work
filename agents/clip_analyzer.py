@@ -1,10 +1,10 @@
 """
-Аналізатор кліпінгів нерухомості — фінальна версія.
+Аналізатор кліпінгів нерухомості — оптимізована версія (Haiku-only, no Vision).
 Методологія: .agents/skills/cre-valuation/README.md [B1, C2, C3]
 
 Кроки обробки:
   1. Haiku  — класифікація категорії (Warehouse / Office / Retail / Land / Residential)
-  2. Sonnet — витяг полів за JSON-схемою категорії [C3]
+  2. Haiku  — витяг полів за JSON-схемою категорії [C3]
   3. Python — нормалізація ціни (UAH→USD), визначення типу угоди (Sale/Rent),
                зонування (Center/Middle/Periphery/Suburbs), знижка на торг [B1],
                питомі показники
@@ -14,8 +14,6 @@
     python3 agents/clip_analyzer.py --dry-run    # без запису — тільки JSON + таблиця
     python3 agents/clip_analyzer.py --reparse    # включно з parsed: true
     python3 agents/clip_analyzer.py --file path  # один файл
-    python3 agents/clip_analyzer.py --fast       # обидва кроки на Haiku
-    python3 agents/clip_analyzer.py --no-vision  # без завантаження зображень
 
 Залежності: anthropic, pydantic, PyYAML, python-dotenv
 """
@@ -23,13 +21,11 @@
 from __future__ import annotations
 
 import argparse
-import base64
 import json
 import logging
 import os
 import re
 import sys
-import urllib.request
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -49,14 +45,13 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 if not ANTHROPIC_API_KEY:
     sys.exit("Помилка: ANTHROPIC_API_KEY не знайдено в .env")
 
-MODEL_SMART = "claude-sonnet-4-6"
-MODEL_FAST  = "claude-haiku-4-5-20251001"
+MODEL = "claude-haiku-4-5-20251001"
+TEXT_LIMIT = 3500  # символів після очищення
 
 # ── Фінансові константи [B1, C2] ──────────────────────────────────────────
 
 EXCHANGE_RATE: float = 43.5   # UAH → USD (міняти тільки тут)
 
-# Знижки на торг [B1, Україна 2024-25]
 DISCOUNT_RATES: dict[str, float] = {
     "Warehouse":   0.07,
     "Office":      0.08,
@@ -65,14 +60,11 @@ DISCOUNT_RATES: dict[str, float] = {
     "Residential": 0.05,
 }
 
-MAX_IMAGES      = 3
-IMAGE_MAX_BYTES = 4 * 1024 * 1024
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Географічне зонування Києва [B1 — локація ±5-25%]
+# Географічне зонування Києва [B1]
 # ---------------------------------------------------------------------------
 
 _CENTER = {
@@ -90,10 +82,6 @@ _SUBURBS_MARKERS = ("область", "обл.", "бучанськ", "брова
 
 
 def get_location_zone(district: str | None, location: str | None) -> str:
-    """
-    Визначає зону локації на основі назви району та адреси.
-    Center / Middle / Periphery / Suburbs
-    """
     text = " ".join(filter(None, [district, location])).lower()
     if not text:
         return "Unknown"
@@ -107,129 +95,71 @@ def get_location_zone(district: str | None, location: str | None) -> str:
 
 
 # ---------------------------------------------------------------------------
-# ═══════════════════════════════════════════════════════════════════════════
-#  СХЕМИ КАТЕГОРІЙ (Pydantic) [C3]
-#  Додати нову категорію → модель тут + рядок у CATEGORY_REGISTRY
-# ═══════════════════════════════════════════════════════════════════════════
+# Схеми категорій (Pydantic) [C3]
 # ---------------------------------------------------------------------------
 
-
 class BaseProperty(BaseModel):
-    """Загальні поля для всіх типів об'єктів."""
-
-    # ── Ціна та тип угоди ─────────────────────────────────────────────────
-    Deal_Type:      Optional[Literal["Sale", "Rent"]] = Field(
-        None,
-        description="Тип угоди: 'Sale' — продаж, 'Rent' — оренда",
-    )
-    Price:          Optional[float] = Field(
-        None,
-        description="Ціна продажу — тільки число, без валюти і символів",
-    )
-    Rent_per_sqm:   Optional[float] = Field(
-        None,
-        description="Місячна орендна ставка за м² — тільки число ($/м²/міс або грн/м²/міс)",
-    )
-    Rent_Monthly_Total: Optional[float] = Field(
-        None,
-        description="Загальна місячна орендна плата за весь об'єкт — тільки число",
-    )
-    Price_Currency: Optional[Literal["USD", "UAH"]] = Field(
-        None,
-        description="'USD' якщо ціна в $ / доларах, 'UAH' якщо в грн / гривнях / ₴. ОБОВ'ЯЗКОВО.",
-    )
-
-    # ── Об'єкт ────────────────────────────────────────────────────────────
-    Area:        Optional[float] = Field(None, description="Загальна площа, кв.м")
-    Object_Type: Optional[str]   = Field(None, description="Тип об'єкта з оголошення")
-    Year_Built:  Optional[int]   = Field(None, description="Рік побудови або null")
-    Floors:      Optional[int]   = Field(None, description="Поверховість будівлі")
-    Status:      str             = Field("Аналог", description="Аналог | Продаж | Оренда | Закрито")
-
-    # ── Локація ───────────────────────────────────────────────────────────
-    Location:    Optional[str]   = Field(None, description="Адреса: місто / район / вулиця")
-    District:    Optional[str]   = Field(
-        None,
-        description="Назва адміністративного району Києва (напр. 'Шевченківський', 'Печерський')"
-    )
-
-    # ── Стан і ремонт ─────────────────────────────────────────────────────
-    Condition_Type: Optional[str] = Field(
-        None,
-        description=(
-            "Стан приміщення: одне з — 'після будівельників' / 'під оздоблення' / "
-            "'з ремонтом' / 'з меблями'"
-        ),
-    )
-    Renovation_Style: Optional[str] = Field(
-        None,
-        description=(
-            "Стиль ремонту якщо є: одне з — 'радянський' / '2000-ні' / "
-            "'новий офісний' / 'дизайнерський'"
-        ),
-    )
-
-    # ── Паркінг ───────────────────────────────────────────────────────────
-    Parking_Open:         Optional[bool] = Field(None, description="Відкрита парковка: true / false")
-    Parking_Underground:  Optional[bool] = Field(None, description="Підземний паркінг: true / false")
-
-    # ── Правовий статус ───────────────────────────────────────────────────
-    Legal_Status: Optional[str] = Field(None, description="Право власності / оренда землі / ФДМУ")
-    Encumbrances: Optional[str] = Field(None, description="Обтяження: пам'ятка / застава / арешт або null")
+    Deal_Type:          Optional[Literal["Sale", "Rent"]] = Field(None, description="Sale або Rent")
+    Price:              Optional[float] = Field(None, description="Ціна продажу, число")
+    Rent_per_sqm:       Optional[float] = Field(None, description="Орендна ставка $/м²/міс, число")
+    Rent_Monthly_Total: Optional[float] = Field(None, description="Загальна місячна оренда, число")
+    Price_Currency:     Optional[Literal["USD", "UAH"]] = Field(None, description="USD або UAH")
+    Area:               Optional[float] = Field(None, description="Площа, м²")
+    Object_Type:        Optional[str]   = Field(None, description="Тип об'єкта")
+    Year_Built:         Optional[int]   = Field(None, description="Рік побудови")
+    Floors:             Optional[int]   = Field(None, description="Поверховість")
+    Status:             str             = Field("Аналог")
+    Location:           Optional[str]   = Field(None, description="Адреса")
+    District:           Optional[str]   = Field(None, description="Район Києва")
+    Condition_Type:     Optional[str]   = Field(None, description="після будівельників / під оздоблення / з ремонтом / з меблями")
+    Renovation_Style:   Optional[str]   = Field(None, description="радянський / 2000-ні / новий офісний / дизайнерський")
+    Parking_Open:       Optional[bool]  = Field(None, description="Відкрита парковка")
+    Parking_Underground:Optional[bool]  = Field(None, description="Підземний паркінг")
+    Legal_Status:       Optional[str]   = Field(None, description="Право власності")
+    Encumbrances:       Optional[str]   = Field(None, description="Обтяження або null")
 
 
 class WarehouseProperty(BaseProperty):
-    """Склад / виробництво / логістика / майновий комплекс [C3]."""
     Ceiling_Height: Optional[float] = Field(None, description="Висота стелі, м")
-    Power_kW:       Optional[float] = Field(None, description="Електрична потужність, кВт")
-    Floor_Type:     Optional[str]   = Field(None, description="Тип підлоги: бетон / асфальт / плитка / насипний")
-    Ramps_Docks:    Optional[str]   = Field(None, description="Рампи/доки: є / немає / кількість / тип")
-    Land_Area_ha:   Optional[float] = Field(None, description="Площа земельної ділянки, га")
-    Railway:        Optional[bool]  = Field(None, description="Залізнична гілка: true / false")
-    Security:       Optional[str]   = Field(None, description="Охорона: цілодобова / відеоспостереження / немає")
+    Power_kW:       Optional[float] = Field(None, description="Потужність, кВт")
+    Floor_Type:     Optional[str]   = Field(None, description="бетон / асфальт / плитка / насипний")
+    Ramps_Docks:    Optional[str]   = Field(None, description="Рампи/доки")
+    Land_Area_ha:   Optional[float] = Field(None, description="Площа ділянки, га")
+    Railway:        Optional[bool]  = Field(None, description="Залізнична гілка")
+    Security:       Optional[str]   = Field(None, description="Охорона")
 
 
 class OfficeProperty(BaseProperty):
-    """Офіс / бізнес-центр / коворкінг [C3]."""
-    Building_Class:      Optional[Literal["A", "B+", "B", "C"]] = Field(
-        None, description="Клас будівлі: A / B+ / B / C"
-    )
-    Layout_Type:         Optional[str]  = Field(None, description="Планування: open-space / кабінетне / змішане")
-    Parking_Spaces:      Optional[int]  = Field(None, description="Кількість паркомісць (число)")
-    Generator:           Optional[bool] = Field(None, description="Генератор: true / false")
-    Shelter:             Optional[bool] = Field(None, description="Укриття / бомбосховище: true / false")
-    Distance_to_Metro:   Optional[int]  = Field(None, description="Відстань до метро, хвилин пішки")
-    Management_Co:       Optional[str]  = Field(None, description="Керуюча компанія або null")
+    Building_Class:    Optional[Literal["A", "B+", "B", "C"]] = Field(None, description="Клас A/B+/B/C")
+    Layout_Type:       Optional[str]  = Field(None, description="open-space / кабінетне / змішане")
+    Parking_Spaces:    Optional[int]  = Field(None, description="Паркомісць")
+    Generator:         Optional[bool] = Field(None, description="Генератор")
+    Shelter:           Optional[bool] = Field(None, description="Укриття/бомбосховище")
+    Distance_to_Metro: Optional[int]  = Field(None, description="До метро, хв пішки")
+    Management_Co:     Optional[str]  = Field(None, description="Керуюча компанія")
 
 
 class RetailProperty(BaseProperty):
-    """Торгівля / стріт-рітейл / ТРЦ [C3]."""
-    Frontage_m:        Optional[float] = Field(None, description="Вітринна лінія / фронтаж, м")
-    Floor_in_Building: Optional[int]   = Field(None, description="Поверх розташування")
+    Frontage_m:        Optional[float] = Field(None, description="Фронтаж, м")
+    Floor_in_Building: Optional[int]   = Field(None, description="Поверх")
     Parking_Spaces:    Optional[int]   = Field(None, description="Паркомісць")
-    Separate_Entrance: Optional[bool]  = Field(None, description="Окремий вхід: true / false")
-    Traffic:           Optional[str]   = Field(None, description="Трафік: пішохідний / автомобільний / змішаний")
+    Separate_Entrance: Optional[bool]  = Field(None, description="Окремий вхід")
+    Traffic:           Optional[str]   = Field(None, description="пішохідний / автомобільний / змішаний")
 
 
 class LandProperty(BaseProperty):
-    """Земельна ділянка [C3]."""
     Land_Area_ha:        Optional[float] = Field(None, description="Площа, га")
     Land_Purpose:        Optional[str]   = Field(None, description="Цільове призначення")
-    Cadastral_Number:    Optional[str]   = Field(None, description="Кадастровий номер якщо вказаний")
-    Communications:      Optional[str]   = Field(None, description="Комунікації: електрика / газ / вода")
-    Distance_to_City_km: Optional[float] = Field(None, description="Відстань до міста, км")
+    Cadastral_Number:    Optional[str]   = Field(None, description="Кадастровий номер")
+    Communications:      Optional[str]   = Field(None, description="Комунікації")
+    Distance_to_City_km: Optional[float] = Field(None, description="До міста, км")
 
 
 class ResidentialProperty(BaseProperty):
-    """Житлова нерухомість."""
-    Rooms:     Optional[int]  = Field(None, description="Кількість кімнат")
-    Floor:     Optional[int]  = Field(None, description="Поверх квартири")
-    Furniture: Optional[bool] = Field(None, description="Меблі: true / false")
+    Rooms:     Optional[int]  = Field(None, description="Кімнат")
+    Floor:     Optional[int]  = Field(None, description="Поверх")
+    Furniture: Optional[bool] = Field(None, description="Меблі")
 
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  РЕЄСТР КАТЕГОРІЙ
-# ═══════════════════════════════════════════════════════════════════════════
 
 CATEGORY_REGISTRY: dict[str, type[BaseProperty]] = {
     "Warehouse":   WarehouseProperty,
@@ -242,7 +172,6 @@ CATEGORY_REGISTRY: dict[str, type[BaseProperty]] = {
 VALID_CATEGORIES = list(CATEGORY_REGISTRY.keys())
 DEFAULT_CATEGORY = "Warehouse"
 
-# ── Маппинг категорій → папки для сортування ──────────────────────────────
 CATEGORY_DIRS: dict[str, str] = {
     "Warehouse":   "Warehouses",
     "Office":      "Offices",
@@ -251,7 +180,6 @@ CATEGORY_DIRS: dict[str, str] = {
     "Residential": "Residential",
 }
 
-# Всі поля дозволені до запису у frontmatter
 _ALLOWED_FIELDS: set[str] = set()
 for _cls in CATEGORY_REGISTRY.values():
     _ALLOWED_FIELDS.update(_cls.model_fields.keys())
@@ -291,85 +219,56 @@ def write_md(path: Path, frontmatter: dict, body: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Vision
+# Очищення тексту
 # ---------------------------------------------------------------------------
 
-ALLOWED_MIME = {"image/jpeg", "image/png", "image/gif", "image/webp"}
-_EXT_MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-             ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp"}
+_MD_NOISE = re.compile(
+    r"!\[.*?\]\(.*?\)"       # images
+    r"|<[^>]+>"              # HTML tags
+    r"|```[\s\S]*?```"       # code blocks
+    r"|\[([^\]]+)\]\([^\)]+\)"  # links → keep label
+    r"|#{1,6}\s+"            # headings markers
+    r"|[*_`]{1,3}"           # bold/italic/code markers
+    r"|\|[-:]+\|(?:[-:| ]+\|)*"  # table separators
+)
 
 
-def _find_image_urls(body: str) -> list[str]:
-    return re.findall(r"!\[.*?\]\((https?://[^\)]+)\)", body)
-
-
-def _fetch_image_b64(url: str) -> tuple[str, str] | None:
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw_ct = resp.headers.get("Content-Type", "")
-            mime   = raw_ct.split(";")[0].strip().lower()
-            if mime not in ALLOWED_MIME:
-                ext  = Path(url.split("?")[0]).suffix.lower()
-                mime = _EXT_MIME.get(ext, "image/jpeg")
-            if mime not in ALLOWED_MIME:
-                return None
-            data = resp.read(IMAGE_MAX_BYTES + 1)
-            if len(data) > IMAGE_MAX_BYTES:
-                return None
-            return base64.standard_b64encode(data).decode(), mime
-    except Exception as e:
-        log.debug(f"Не вдалось завантажити {url[:60]}: {e}")
-        return None
-
-
-def _build_image_blocks(body: str, max_images: int) -> list[dict]:
-    if max_images == 0:
-        return []
-    blocks = []
-    for url in _find_image_urls(body)[:max_images]:
-        result = _fetch_image_b64(url)
-        if result:
-            b64, mime = result
-            blocks.append({"type": "image",
-                           "source": {"type": "base64", "media_type": mime, "data": b64}})
-    return blocks
+def _clean_text(text: str, limit: int = TEXT_LIMIT) -> str:
+    """Видаляє Markdown-розмітку, зайві пробіли і обрізає до limit символів."""
+    text = _MD_NOISE.sub(lambda m: m.group(1) or "", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r" {2,}", " ", text)
+    return text[:limit].strip()
 
 
 # ---------------------------------------------------------------------------
-# Claude API
+# Claude API з Prompt Caching
 # ---------------------------------------------------------------------------
 
-def _call_claude(content: list[dict], system: str, model: str,
-                 max_tokens: int = 256) -> str | None:
+def _call_claude(text_prompt: str, system_text: str, max_tokens: int = 256) -> str | None:
+    """
+    Викликає Claude Haiku з prompt caching на системному промпті.
+    system_text кешується через cache_control: ephemeral.
+    """
     import anthropic
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-
-    def _req(c: list[dict]) -> str | None:
-        try:
-            resp = client.messages.create(
-                model=model, max_tokens=max_tokens, system=system,
-                messages=[{"role": "user", "content": c}],
-            )
-            return resp.content[0].text.strip()
-        except anthropic.BadRequestError as e:
-            if "Could not process image" in str(e) or "invalid_request_error" in str(e):
-                return "IMAGE_ERROR"
-            log.error(f"BadRequest: {e}")
-            return None
-        except Exception as e:
-            log.error(f"Claude API error: {e}")
-            return None
-
-    result = _req(content)
-    if result == "IMAGE_ERROR":
-        text_only = [b for b in content if b.get("type") == "text"]
-        if len(text_only) < len(content):
-            log.warning("Зображення відхилені API — повтор тільки з текстом")
-            result = _req(text_only)
-        if result == "IMAGE_ERROR":
-            return None
-    return result
+    try:
+        resp = client.messages.create(
+            model=MODEL,
+            max_tokens=max_tokens,
+            system=[
+                {
+                    "type": "text",
+                    "text": system_text,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            messages=[{"role": "user", "content": text_prompt}],
+        )
+        return resp.content[0].text.strip()
+    except Exception as e:
+        log.error(f"Claude API error: {e}")
+        return None
 
 
 def _clean_json(raw: str) -> str:
@@ -381,26 +280,23 @@ def _clean_json(raw: str) -> str:
 # ── Крок 1: Класифікація ────────────────────────────────────────────────────
 
 CLASSIFY_SYSTEM = (
-    "Ти — експерт з комерційної нерухомості. "
-    "Відповідай ТІЛЬКИ одним словом — назвою категорії."
+    "Ти — CRE аналітик. Відповідай ТІЛЬКИ одним словом — назвою категорії: "
+    + ", ".join(VALID_CATEGORIES) + "."
 )
 
-CLASSIFY_PROMPT = f"""Визнач категорію об'єкта нерухомості.
-Вибери ОДНУ категорію: {", ".join(VALID_CATEGORIES)}.
-
-- Warehouse  → склад, ангар, виробництво, логістика, майновий комплекс
-- Office     → офіс, бізнес-центр, коворкінг, адміністративне приміщення
-- Retail     → магазин, торговий центр, стріт-рітейл, торгове приміщення
-- Land       → земельна ділянка, земля
-- Residential → квартира, будинок, котедж
-
-Текст оголошення:
-"""
+CLASSIFY_PROMPT = (
+    "Warehouse=склад/ангар/виробництво/логістика/майновий комплекс\n"
+    "Office=офіс/бізнес-центр/коворкінг\n"
+    "Retail=магазин/ТРЦ/стріт-рітейл\n"
+    "Land=земельна ділянка\n"
+    "Residential=квартира/будинок\n\n"
+    "Визнач категорію:\n"
+)
 
 
-def classify_category(text: str, model: str) -> str:
-    content = [{"type": "text", "text": CLASSIFY_PROMPT + text[:6_000]}]
-    raw = _call_claude(content, CLASSIFY_SYSTEM, model=model, max_tokens=20)
+def classify_category(text: str) -> str:
+    clean = _clean_text(text, limit=1500)
+    raw = _call_claude(CLASSIFY_PROMPT + clean, CLASSIFY_SYSTEM, max_tokens=10)
     if not raw:
         return DEFAULT_CATEGORY
     for cat in VALID_CATEGORIES:
@@ -414,34 +310,24 @@ def classify_category(text: str, model: str) -> str:
 
 EXTRACT_SYSTEM = (
     "Ти — Senior CRE аналітик (Україна). "
-    "Відповідай ТІЛЬКИ валідним JSON без пояснень і markdown-блоків."
+    "Відповідай ТІЛЬКИ валідним JSON без пояснень і markdown-блоків. "
+    "Відсутнє поле → null. Числа без одиниць."
 )
 
 
-def extract_fields(text: str, category: str,
-                   image_blocks: list[dict], model: str) -> dict | None:
+def extract_fields(text: str, category: str) -> dict | None:
     model_cls   = CATEGORY_REGISTRY[category]
-    schema_json = json.dumps(model_cls.model_json_schema(), ensure_ascii=False, indent=2)
+    schema_json = json.dumps(model_cls.model_json_schema(), ensure_ascii=False)
+    clean       = _clean_text(text)
 
     prompt = (
-        f"Категорія: {category}\n\n"
-        f"Витягни дані з оголошення. JSON Schema:\n\n{schema_json}\n\n"
-        "Правила:\n"
-        "- Числа без одиниць виміру\n"
-        "- Відсутнє поле → null\n"
-        "- Deal_Type: 'Sale' якщо продаж, 'Rent' якщо оренда\n"
-        "- Price: ціна продажу числом\n"
-        "- Rent_per_sqm: місячна ставка за м², тільки число\n"
-        "- Rent_Monthly_Total: загальна місячна плата, тільки число\n"
-        "- Price_Currency: 'USD' або 'UAH' — ОБОВ'ЯЗКОВО\n"
-        "- District: назва адміністративного району Києва або null\n"
-        "- Parking_Open / Parking_Underground: true/false\n"
-        "- Generator / Shelter (Office): true/false\n\n"
-        f"Текст:\n{text[:12_000]}"
+        f"Категорія: {category}. Schema: {schema_json}\n\n"
+        "Правила: Deal_Type=Sale/Rent; Price_Currency=USD/UAH (обов'язково); "
+        "District=адм. район Києва або null; Parking_*/Generator/Shelter/Railway=true/false.\n\n"
+        f"Оголошення:\n{clean}"
     )
 
-    content: list[dict] = image_blocks + [{"type": "text", "text": prompt}]
-    raw = _call_claude(content, EXTRACT_SYSTEM, model=model, max_tokens=1024)
+    raw = _call_claude(prompt, EXTRACT_SYSTEM, max_tokens=800)
     if not raw:
         return None
     try:
@@ -459,16 +345,10 @@ def extract_fields(text: str, category: str,
 
 
 # ---------------------------------------------------------------------------
-# Крок 3: Збагачення — нормалізація ціни, зонування, знижки [B1, C2]
+# Крок 3: Збагачення [B1, C2]
 # ---------------------------------------------------------------------------
 
 def enrich(extracted: dict, category: str) -> dict:
-    """
-    • UAH → USD [C2]
-    • Location_Zone (Center / Middle / Periphery / Suburbs)
-    • Знижка на торг [B1]: Price_Adjusted або Rent_Adjusted
-    • Питомі показники: Price_per_sqm, Price_per_sqm_Adjusted
-    """
     r        = dict(extracted)
     currency = r.get("Price_Currency") or "USD"
     area     = r.get("Area")
@@ -480,52 +360,33 @@ def enrich(extracted: dict, category: str) -> dict:
             return None
         if currency == "UAH":
             usd = val / EXCHANGE_RATE
-            log.info(f"  [C2] {val:,.0f} грн ÷ {EXCHANGE_RATE} = {usd:,.0f} $")
+            log.info(f"  [C2] {val:,.0f} грн → {usd:,.0f} $")
             return usd
         return float(val)
 
-    # ── Зонування ──────────────────────────────────────────────────────────
     zone = get_location_zone(r.get("District"), r.get("Location"))
     r["Location_Zone"] = zone
 
-    # ── Sale ────────────────────────────────────────────────────────────────
     if deal == "Sale" and r.get("Price") is not None:
         price_usd = to_usd(r["Price"])
         r["Price"] = int(round(price_usd))
-
         adj = price_usd * (1 - discount)
         r["Price_Adjusted"] = int(round(adj))
-        log.info(f"  [B1] Торг -{discount*100:.0f}%: {r['Price']:,}$ → {r['Price_Adjusted']:,}$")
-
+        log.info(f"  [B1] -{discount*100:.0f}%: {r['Price']:,}$ → {r['Price_Adjusted']:,}$")
         if area and area > 0:
             r["Price_per_sqm"]          = int(round(price_usd / area))
             r["Price_per_sqm_Adjusted"] = int(round(adj / area))
-            log.info(
-                f"  [B1] $/м²: {r['Price_per_sqm']:,} → {r['Price_per_sqm_Adjusted']:,} (після торгу)"
-            )
 
-    # ── Rent ─────────────────────────────────────────────────────────────────
     if deal == "Rent":
-        # Конвертуємо загальну ставку
         if r.get("Rent_Monthly_Total") is not None:
             r["Rent_Monthly_Total"] = int(round(to_usd(r["Rent_Monthly_Total"])))
-
-        # Якщо Rent_per_sqm відсутній, але є Rent_Monthly_Total + Area — рахуємо
         if r.get("Rent_per_sqm") is None and r.get("Rent_Monthly_Total") and area and area > 0:
             r["Rent_per_sqm"] = round(r["Rent_Monthly_Total"] / area, 2)
-            log.info(
-                f"  [C3] Rent_per_sqm = {r['Rent_Monthly_Total']:,}$ ÷ {area:.0f}м² "
-                f"= {r['Rent_per_sqm']} $/м²/міс"
-            )
-
         if r.get("Rent_per_sqm") is not None:
             rent_usd = to_usd(r["Rent_per_sqm"])
             r["Rent_per_sqm"]  = round(rent_usd, 2)
             r["Rent_Adjusted"] = round(rent_usd * (1 - discount), 2)
-            log.info(
-                f"  [B1] Оренда торг -{discount*100:.0f}%: "
-                f"{r['Rent_per_sqm']} $/м²/міс → {r['Rent_Adjusted']} $/м²/міс"
-            )
+            log.info(f"  [B1] Оренда -{discount*100:.0f}%: {r['Rent_per_sqm']} → {r['Rent_Adjusted']} $/м²/міс")
 
     log.info(f"  Зона: {zone}")
     return r
@@ -535,36 +396,25 @@ def enrich(extracted: dict, category: str) -> dict:
 # Обробка файлу
 # ---------------------------------------------------------------------------
 
-def process_file(path: Path, dry_run: bool = False,
-                 fast_mode: bool = False) -> dict | None:
+def process_file(path: Path, dry_run: bool = False) -> dict | None:
     log.info(f"Обробляю: {path.name}")
 
     frontmatter, body = parse_md(path)
     title       = frontmatter.get("title", "")
     description = frontmatter.get("description", "")
-    full_text   = f"Заголовок: {title}\n\nОпис: {description}\n\n{body}"
+    full_text   = f"{title}\n{description}\n{body}"
 
-    image_blocks = _build_image_blocks(body, MAX_IMAGES)
-    if image_blocks:
-        log.info(f"  Vision: {len(image_blocks)} зображень")
-
-    # Крок 1
-    category = classify_category(full_text, model=MODEL_FAST)
+    category = classify_category(full_text)
     log.info(f"  Категорія → {category}")
 
-    # Крок 2
-    extract_model = MODEL_FAST if fast_mode else MODEL_SMART
-    extracted = extract_fields(full_text, category, image_blocks, extract_model)
+    extracted = extract_fields(full_text, category)
     if extracted is None:
         log.error(f"  Пропускаю: {path.name}")
         return None
 
-    log.info(f"  Витягнено (сире): {extracted}")
-
-    # Крок 3
+    log.info(f"  Витягнено: {extracted}")
     enriched = enrich(extracted, category)
 
-    # Рядок для зведеної таблиці
     summary = {
         "file":       path.name[:55],
         "category":   category,
@@ -572,12 +422,10 @@ def process_file(path: Path, dry_run: bool = False,
         "district":   enriched.get("District", "—"),
         "zone":       enriched.get("Location_Zone", "—"),
         "currency":   enriched.get("Price_Currency", "?"),
-        # Sale
         "price_orig": extracted.get("Price"),
         "price_usd":  enriched.get("Price"),
         "price_adj":  enriched.get("Price_Adjusted"),
         "ppsm_adj":   enriched.get("Price_per_sqm_Adjusted"),
-        # Rent
         "rent_psm":   enriched.get("Rent_per_sqm"),
         "rent_adj":   enriched.get("Rent_Adjusted"),
         "rent_total": enriched.get("Rent_Monthly_Total"),
@@ -586,18 +434,15 @@ def process_file(path: Path, dry_run: bool = False,
     if dry_run:
         return summary
 
-    # Запис у frontmatter
     for key, value in enriched.items():
         if key in _ALLOWED_FIELDS:
             frontmatter[key] = value
 
     frontmatter["Category"] = category
     frontmatter["parsed"]   = True
-
     write_md(path, frontmatter, body)
     log.info(f"  ✓ Записано: {path.name}")
 
-    # ── Сортування у підпапку за категорією ───────────────────────────────
     subdir_name = CATEGORY_DIRS.get(category)
     if subdir_name:
         dest_dir = path.parent / subdir_name
@@ -646,7 +491,6 @@ def print_summary(results: list[dict]) -> None:
             adj_str   = _fmt(r["rent_adj"], " $/м²")
 
         moved = r.get("moved_to", "—")
-
         print(
             f"  {r['file']:<44} {r['category']:>9} {deal:>5} "
             f"{(r['district'] or '—'):<16} {r['zone']:>10} "
@@ -668,14 +512,8 @@ def main() -> None:
     parser.add_argument("--dry-run",       action="store_true")
     parser.add_argument("--reparse",       action="store_true")
     parser.add_argument("--file",          type=str, default=None)
-    parser.add_argument("--no-vision",     action="store_true")
-    parser.add_argument("--fast",          action="store_true")
     parser.add_argument("--clippings-dir", type=str, default=str(CLIPPINGS_DIR))
     args = parser.parse_args()
-
-    global MAX_IMAGES
-    if args.no_vision:
-        MAX_IMAGES = 0
 
     if args.file:
         target = Path(args.file)
@@ -703,7 +541,7 @@ def main() -> None:
 
     results, ok, fail = [], 0, 0
     for path in to_process:
-        r = process_file(path, dry_run=args.dry_run, fast_mode=args.fast)
+        r = process_file(path, dry_run=args.dry_run)
         if r:
             results.append(r)
             ok += 1
@@ -724,7 +562,7 @@ def main() -> None:
 #
 #  2. CATEGORY_REGISTRY:   "Hotel": HotelProperty
 #  3. DISCOUNT_RATES:      "Hotel": 0.07
-#  4. CLASSIFY_PROMPT:     - Hotel → готель, хостел, апарт-готель
+#  4. CLASSIFY_PROMPT:     Hotel=готель/хостел/апарт-готель
 #
 # ═══════════════════════════════════════════════════════════════════════════
 
