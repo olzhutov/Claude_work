@@ -28,7 +28,7 @@
               "type": "markdown",
               "state": {
                 "file": "cre_analytics/📊 База аналогов (Офисы).md",
-                "mode": "source",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
@@ -93,7 +93,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 373.5
+    "width": 452.5
   },
   "right": {
     "id": "7f4df387a4a36db0",
@@ -202,13 +202,14 @@
   },
   "active": "6b3968ee64af4195",
   "lastOpenFiles": [
+    "cre_analytics/📊 База аналогов (Склады).md",
+    "Clippings/Offices/Offices/Аренда офиса в ЦЕНТРЕ ул Богдана Хмельницкого ШЕВЧЕНКОВСКИЙ р-н Генератор Укрытие 15 000 $ - Оренда офісів Київ на Olx.md",
     "cre_analytics/📊 База аналогов (Офисы).md",
     "Clippings/Warehouses/Warehouses/ТОРГ ‼️ Продаж під виробництво або склад, Київ, Правий берег, Видубичі 2 800 000 $ - Продаж складів, ангарів Київ на Olx.md",
     "Clippings/Warehouses/Warehouses/Склад 5000 м2 Дарниця 1 350 000 $ - Продаж складів, ангарів Київ на Olx.md",
     "Clippings/Warehouses/Warehouses/Продаж Готового Складського Комплексу в Київській області! 2 500 000 $ - Продаж складів, ангарів Мила на Olx.md",
     "Clippings/Warehouses/Warehouses/Виробничо складське приміщення 1500м2, Радистів 64 480 000 $ - Продаж складів, ангарів Київ на Olx.md",
     "Clippings/Warehouses/Warehouses",
-    "Clippings/Offices/Offices/Аренда офиса в ЦЕНТРЕ ул Богдана Хмельницкого ШЕВЧЕНКОВСКИЙ р-н Генератор Укрытие 15 000 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices/Offices",
     "Clippings/Warehouses/ТОРГ ‼️ Продаж під виробництво або склад, Київ, Правий берег, Видубичі 2 800 000 $ - Продаж складів, ангарів Київ на Olx.md",
     "Clippings/Warehouses/Склад 5000 м2 Дарниця 1 350 000 $ - Продаж складів, ангарів Київ на Olx.md",
@@ -218,7 +219,6 @@
     "Clippings/Offices/Аренда офиса в ЦЕНТРЕ ул Богдана Хмельницкого ШЕВЧЕНКОВСКИЙ р-н Генератор Укрытие 15 000 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices",
     "agents/clip_analyzer.py.tmp.63220.1775909069086",
-    "cre_analytics/📊 База аналогов (Склады).md",
     "Clippings/Аренда офиса в ЦЕНТРЕ ул Богдана Хмельницкого ШЕВЧЕНКОВСКИЙ р-н Генератор Укрытие 15 000 $ - Оренда офісів Київ на Olx.md",
     "CLAUDE.md",
     "CLAUDE Analytics.md",
