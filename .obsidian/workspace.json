@@ -11,14 +11,12 @@
             "id": "89547ec64edd658d",
             "type": "leaf",
             "state": {
-              "type": "markdown",
+              "type": "image",
               "state": {
-                "file": "AGENTS_README.md",
-                "mode": "source",
-                "source": false
+                "file": "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg"
               },
-              "icon": "lucide-file",
-              "title": "AGENTS_README"
+              "icon": "lucide-image",
+              "title": "2026-04-11_10-21-44"
             }
           }
         ]
@@ -94,7 +92,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "AGENTS_README.md",
+                "file": "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +102,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для AGENTS_README"
+              "title": "Обратные ссылки для 2026-04-11_10-21-44"
             }
           },
           {
@@ -113,12 +111,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "AGENTS_README.md",
+                "file": "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из AGENTS_README"
+              "title": "Исходящие ссылки из 2026-04-11_10-21-44"
             }
           },
           {
@@ -156,13 +154,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AGENTS_README.md",
+                "file": "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура AGENTS_README"
+              "title": "Структура 2026-04-11_10-21-44"
             }
           }
         ]
@@ -187,6 +185,9 @@
   },
   "active": "a76bafe3ab335dee",
   "lastOpenFiles": [
+    "Объекты/Inbox/notes.md",
+    "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
+    "AGENTS_README.md",
     "agents/telegram_bridge.py",
     "Объекты/Inbox/photos",
     "Объекты/Inbox",
@@ -206,7 +207,6 @@
     "Объекты/Lebedyovka/wiki/financials",
     "Объекты/Lebedyovka/wiki/contracts",
     "Объекты/Lebedyovka/wiki",
-    "Объекты/Lebedyovka",
     "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.26.jpeg",
     "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25.jpeg",
     "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (4).jpeg",
@@ -226,12 +226,9 @@
     "Объекты/Фастов_Брандта50/wiki/tenants/Атлас_Технолоджи_Груп.md",
     "Объекты/Фастов_Брандта50/wiki/tenants/Атлас_Інвест_Буд.md",
     "Объекты/Фастов_Брандта50/Снимок экрана 2026-04-02 в 12.51.59.png",
-    "Объекты/Фастов_Брандта50/Снимок экрана 2026-04-02 в 12.52.27.png",
     "Объекты/Фастов_Брандта50/Судова_справа_911_824_26.md",
     "Объекты/Фастов_Брандта50/Схема_угоди_оренда_викуп.md",
     "Объекты/Фастов_Брандта50/Юридичні_ризики_Бранта_50.md",
-    "Объекты/Фастов_Брандта50/Ланцюг_власників_Бранта_50.md",
-    "Объекты/Фастов_Брандта50/Атлас_Інвест_Буд.md",
-    "Объекты/Фастов_Брандта50/Атлас_Технолоджи_Груп.md"
+    "Объекты/Фастов_Брандта50/Ланцюг_власників_Бранта_50.md"
   ]
 }
