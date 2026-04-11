@@ -11,12 +11,14 @@
             "id": "40ee8e0d69895392",
             "type": "leaf",
             "state": {
-              "type": "pdf",
+              "type": "markdown",
               "state": {
-                "file": "Объекты/Владимирская_8/wiki/info_brief.pdf"
+                "file": "Clippings/Offices/Без%! Оренда офісу. Печерський р-н, вул. Новоселицька, 722 м2 20 000 $ - Оренда офісів Київ на Olx.md",
+                "mode": "preview",
+                "source": false
               },
-              "icon": "lucide-file-text",
-              "title": "info_brief"
+              "icon": "lucide-file",
+              "title": "Без%! Оренда офісу. Печерський р-н, вул. Новоселицька, 722 м2 20 000 $ - Оренда офісів Київ на Olx"
             }
           }
         ]
@@ -92,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Объекты/Владимирская_8/wiki/info_brief.pdf",
+                "file": "Clippings/Offices/Без%! Оренда офісу. Печерський р-н, вул. Новоселицька, 722 м2 20 000 $ - Оренда офісів Київ на Olx.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для info_brief"
+              "title": "Обратные ссылки для Без%! Оренда офісу. Печерський р-н, вул. Новоселицька, 722 м2 20 000 $ - Оренда офісів Київ на Olx"
             }
           },
           {
@@ -111,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Объекты/Владимирская_8/wiki/info_brief.pdf",
+                "file": "Clippings/Offices/Без%! Оренда офісу. Печерський р-н, вул. Новоселицька, 722 м2 20 000 $ - Оренда офісів Київ на Olx.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из info_brief"
+              "title": "Исходящие ссылки из Без%! Оренда офісу. Печерський р-н, вул. Новоселицька, 722 м2 20 000 $ - Оренда офісів Київ на Olx"
             }
           },
           {
@@ -154,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Объекты/Владимирская_8/wiki/info_brief.pdf",
+                "file": "Clippings/Offices/Без%! Оренда офісу. Печерський р-н, вул. Новоселицька, 722 м2 20 000 $ - Оренда офісів Київ на Olx.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура info_brief"
+              "title": "Структура Без%! Оренда офісу. Печерський р-н, вул. Новоселицька, 722 м2 20 000 $ - Оренда офісів Київ на Olx"
             }
           }
         ]
@@ -185,7 +187,10 @@
   },
   "active": "40ee8e0d69895392",
   "lastOpenFiles": [
+    "Clippings/Offices/Без%! Оренда офісної будівлі з паркінгом на Печерську (1500 кв.м.) 27 770 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices/Без %. Бізнес центр. Ярославів Вал. Золоті Ворота. Генератор. Укриття 18 $ - Оренда офісів Київ на Olx.md",
+    "cre_analytics/📊 База аналогов (Офисы).md",
+    "Объекты/Владимирская_8/wiki/info_brief.pdf",
     "Clippings/Offices/Аренда офиса в ЦЕНТРЕ ул Богдана Хмельницкого ШЕВЧЕНКОВСКИЙ р-н Генератор Укрытие 15 000 $ - Оренда офісів Київ на Olx.md",
     "CLAUDE.md",
     "Clippings/Термінова Оренда‼️Окрема Будівля‼️Офіс! Центр! Саксаганського! ОСБ! 26 100 $ - Оренда офісів Київ на Olx.md",
@@ -195,7 +200,6 @@
     "Clippings/Offices/Оренда офісу 740 м.кв. Метро Золоті Ворота. 21 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices/Оренда офіс 510м2 бул. Тараса Шевченка Університет Центр Меблі 7 000 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices/Без%! Оренда офісу. Печерський р-н, вул. Новоселицька, 722 м2 20 000 $ - Оренда офісів Київ на Olx.md",
-    "Clippings/Offices/Без%! Оренда офісної будівлі з паркінгом на Печерську (1500 кв.м.) 27 770 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Warehouses/Склад 5000 м2 Дарниця 1 350 000 $ - Продаж складів, ангарів Київ на Olx.md",
     "Clippings/Warehouses/Продаж Готового Складського Комплексу в Київській області! 2 500 000 $ - Продаж складів, ангарів Мила на Olx.md",
     "Clippings/Warehouses/Виробничо складське приміщення 1500м2, Радистів 64 480 000 $ - Продаж складів, ангарів Київ на Olx.md",
@@ -212,15 +216,12 @@
     "Clippings/Без%! Оренда офісної будівлі з паркінгом на Печерську (1500 кв.м.) 27 770 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Без %. Бізнес центр. Ярославів Вал. Золоті Ворота. Генератор. Укриття 18 $ - Оренда офісів Київ на Olx.md",
     "cre_analytics/📊 База аналогов (Склады).md",
-    "cre_analytics/📊 База аналогов (Офисы).md",
     "Clippings/Warehouses/Offices/ТОРГ ‼️ Продаж під виробництво або склад, Київ, Правий берег, Видубичі 2 800 000 $ - Продаж складів, ангарів Київ на Olx.md",
     "Clippings/Warehouses/Offices",
-    "Clippings/Warehouses/Warehouses/Склад 5000 м2 Дарниця 1 350 000 $ - Продаж складів, ангарів Київ на Olx.md",
     "Clippings/Warehouses/Warehouses",
     "Clippings/Offices/Offices",
     "Clippings/Warehouses",
     "Clippings/Offices",
-    "agents/clip_analyzer.py.tmp.63220.1775909069086",
     "Объекты/Inbox/photos/2026-04-11_10-35-56_38.jpg",
     "Объекты/Inbox/photos/2026-04-11_10-35-56_37.jpg",
     "Объекты/Inbox/photos/2026-04-11_10-35-56_39.jpg",
