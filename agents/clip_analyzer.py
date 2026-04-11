@@ -1,7 +1,7 @@
 """
 Анализатор клипингов недвижимости — двухступенчатая обработка через Claude.
 
-Методология: ./skills/skill_analytics.md (разделы B1, C3)
+Методология: .agents/skills/cre-valuation/README.md (разделы B1, C3)
 
 Шаг 1 (classify):  Haiku определяет категорию объекта.
 Шаг 2 (extract):   Sonnet извлекает поля по JSON-схеме категории.
@@ -547,7 +547,7 @@ def print_summary(results: list[dict]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Аналізатор кліпінгів нерухомості [методологія: skills/skill_analytics.md]"
+        description="Аналізатор кліпінгів нерухомості [методологія: .agents/skills/cre-valuation/]"
     )
     parser.add_argument("--dry-run",       action="store_true")
     parser.add_argument("--reparse",       action="store_true")
