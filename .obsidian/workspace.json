@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "CLAUDE.md",
-                "mode": "source",
+                "file": "output/reports/Draft_Valuation_Vladimirskaya_8.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "CLAUDE"
+              "title": "Draft_Valuation_Vladimirskaya_8"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "CLAUDE.md",
+                "file": "output/reports/Draft_Valuation_Vladimirskaya_8.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для CLAUDE"
+              "title": "Обратные ссылки для Draft_Valuation_Vladimirskaya_8"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "CLAUDE.md",
+                "file": "output/reports/Draft_Valuation_Vladimirskaya_8.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из CLAUDE"
+              "title": "Исходящие ссылки из Draft_Valuation_Vladimirskaya_8"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "CLAUDE.md",
+                "file": "output/reports/Draft_Valuation_Vladimirskaya_8.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура CLAUDE"
+              "title": "Структура Draft_Valuation_Vladimirskaya_8"
             }
           }
         ]
@@ -185,8 +185,10 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "a76bafe3ab335dee",
+  "active": "40ee8e0d69895392",
   "lastOpenFiles": [
+    "cre_analytics/📊 База аналогов (Офисы).md",
+    "CLAUDE.md",
     "output/reports/~$Analytic_Model_Vladimirskaya_8.xlsx",
     "Объекты/Владимирская_8/wiki/objects/Нежитловий_будинок_Володимирська_8.md",
     "output/reports/Draft_Valuation_Vladimirskaya_8.md",
@@ -194,13 +196,11 @@
     "temp/build_vladimirskaya_excel.py",
     "output/notion_brief.md",
     "cre_analytics/📊 База аналогов (Склады).md",
-    "cre_analytics/📊 База аналогов (Офисы).md",
     "Clippings/Offices/Без%! Оренда офісу. Печерський р-н, вул. Новоселицька, 722 м2 20 000 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices/Без%! Оренда офісної будівлі з паркінгом на Печерську (1500 кв.м.) 27 770 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices/Без %. Бізнес центр. Ярославів Вал. Золоті Ворота. Генератор. Укриття 18 $ - Оренда офісів Київ на Olx.md",
     "Объекты/Владимирская_8/wiki/info_brief.pdf",
     "Clippings/Offices/Аренда офиса в ЦЕНТРЕ ул Богдана Хмельницкого ШЕВЧЕНКОВСКИЙ р-н Генератор Укрытие 15 000 $ - Оренда офісів Київ на Olx.md",
-    "CLAUDE.md",
     "Clippings/Термінова Оренда‼️Окрема Будівля‼️Офіс! Центр! Саксаганського! ОСБ! 26 100 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices/Термінова Оренда‼️Окрема Будівля‼️Офіс! Центр! Саксаганського! ОСБ! 26 100 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices/Світло не вимикають Офіс 600м2 золоті ворота центр Стрілецька 12 000 $ - Оренда офісів Київ на Olx.md",
@@ -222,7 +222,6 @@
     "agents/valuation_report.py",
     "Clippings/Warehouses/Offices",
     "Clippings/Warehouses/Warehouses",
-    "Clippings/Offices/Offices",
     "Объекты/Inbox/photos/2026-04-11_10-35-56_38.jpg",
     "Объекты/Inbox/photos/2026-04-11_10-35-56_37.jpg",
     "Объекты/Inbox/photos/2026-04-11_10-35-56_39.jpg",
