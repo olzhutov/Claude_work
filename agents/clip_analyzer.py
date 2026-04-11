@@ -1,19 +1,20 @@
 """
 Анализатор клипингов недвижимости — двухступенчатая обработка через Claude.
 
-Шаг 1 (classify):  Claude определяет категорию объекта из текста.
-Шаг 2 (extract):   Claude извлекает поля по JSON-схеме, специфичной для категории.
-                    Схема генерируется автоматически из Pydantic-модели.
+Методология: ./skills/skill_analytics.md (разделы B1, C3)
 
-Добавить новую категорию — см. раздел «КАК ДОБАВИТЬ НОВУЮ КАТЕГОРИЮ» в конце файла.
+Шаг 1 (classify):  Haiku определяет категорию объекта.
+Шаг 2 (extract):   Sonnet извлекает поля по JSON-схеме категории.
+Шаг 3 (enrich):    Python нормализует цену, конвертирует UAH→USD,
+                    применяет скидку на торг [B1], считает удельные показатели.
 
 Запуск:
-    python3 agents/clip_analyzer.py                      # все необработанные в Clippings/
-    python3 agents/clip_analyzer.py --dry-run            # без записи, только вывод JSON
-    python3 agents/clip_analyzer.py --reparse            # включая parsed: true
-    python3 agents/clip_analyzer.py --file "path.md"     # один файл
-    python3 agents/clip_analyzer.py --no-vision          # без загрузки картинок
-    python3 agents/clip_analyzer.py --fast               # модель claude-haiku (дешевле)
+    python3 agents/clip_analyzer.py                  # все необработанные в Clippings/
+    python3 agents/clip_analyzer.py --dry-run        # без записи, только вывод JSON
+    python3 agents/clip_analyzer.py --reparse        # включая parsed: true
+    python3 agents/clip_analyzer.py --file path.md   # один файл
+    python3 agents/clip_analyzer.py --no-vision      # без загрузки картинок
+    python3 agents/clip_analyzer.py --fast           # оба шага на Haiku
 
 Зависимости: anthropic, pydantic, PyYAML, python-dotenv
 """
@@ -29,7 +30,7 @@ import re
 import sys
 import urllib.request
 from pathlib import Path
-from typing import Annotated, Literal, Optional
+from typing import Literal, Optional
 
 import yaml
 from dotenv import load_dotenv
@@ -39,25 +40,33 @@ from pydantic import BaseModel, Field
 # Конфигурация
 # ---------------------------------------------------------------------------
 
-BASE_DIR = Path(__file__).parent.parent
+BASE_DIR      = Path(__file__).parent.parent
 CLIPPINGS_DIR = BASE_DIR / "Clippings"
 
 load_dotenv(BASE_DIR / ".env")
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 if not ANTHROPIC_API_KEY:
-    sys.exit(
-        "Ошибка: ANTHROPIC_API_KEY не найден.\n"
-        "Добавьте в .env:\n  ANTHROPIC_API_KEY=sk-ant-..."
-    )
+    sys.exit("Ошибка: ANTHROPIC_API_KEY не найден в .env")
 
-MODEL_SMART = "claude-sonnet-4-6"   # для точного извлечения (шаг 2)
-MODEL_FAST  = "claude-haiku-4-5-20251001"  # для классификации (шаг 1) и режима --fast
+MODEL_SMART = "claude-sonnet-4-6"          # шаг 2: точное извлечение полей
+MODEL_FAST  = "claude-haiku-4-5-20251001"  # шаг 1: классификация + режим --fast
+
+# ── Финансовые константы [B1, C2] ──────────────────────────────────────────
 
 # Жёсткий курс конвертации UAH → USD (менять только здесь)
 EXCHANGE_RATE: float = 43.5
 
-MAX_IMAGES     = 3          # сколько картинок передавать в Vision (0 = отключить)
+# Скидки на торг по типу объекта [B1, Украина 2024-25]
+DISCOUNT_RATES: dict[str, float] = {
+    "Warehouse":   0.07,   # склады -7%
+    "Office":      0.08,   # офисы  -8%
+    "Retail":      0.06,   # ритейл -6%
+    "Land":        0.05,   # земля  -5%  [ДОПУЩЕНИЕ]
+    "Residential": 0.05,   # жильё  -5%  [ДОПУЩЕНИЕ]
+}
+
+MAX_IMAGES      = 3
 IMAGE_MAX_BYTES = 4 * 1024 * 1024
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -66,95 +75,101 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # ═══════════════════════════════════════════════════════════════════════════
 #  СХЕМЫ КАТЕГОРИЙ (Pydantic)
-#  Добавить новую категорию → только здесь + одна строка в CATEGORY_REGISTRY
+#  Поля соответствуют структуре карточки объекта [C3]
+#  Добавить новую категорию → модель здесь + строка в CATEGORY_REGISTRY
 # ═══════════════════════════════════════════════════════════════════════════
 # ---------------------------------------------------------------------------
 
 
 class BaseProperty(BaseModel):
-    """Общие поля для всех типов объектов."""
-    Price:          Optional[float] = Field(None, description="Цена в числах (только цифры, без валюты и символов)")
+    """Общие поля для всех типов объектов [C3]."""
+    Price:          Optional[float] = Field(None, description="Цена числом без валюты и символов")
     Price_Currency: Optional[Literal["USD", "UAH"]] = Field(
         None,
         description=(
-            "Валюта цены из объявления: 'USD' если цена в долларах ($, USD, дол.), "
-            "'UAH' если в гривнах (грн, ₴, UAH). ОБЯЗАТЕЛЬНО указать."
+            "'USD' если цена в $ / долларах / USD, "
+            "'UAH' если в грн / гривнях / ₴. ОБЯЗАТЕЛЬНО."
         ),
     )
-    Area:       Optional[float] = Field(None, description="Общая площадь объекта, кв.м")
-    Location:   Optional[str]   = Field(None, description="Краткое описание местоположения: город / район / трасса")
-    Year_Built: Optional[int]   = Field(None, description="Год постройки/сдачи или null")
-    Status:     str             = Field("Аналог", description="Статус объекта: Аналог | Продаж | Оренда | Закрито")
-    Object_Type: Optional[str]  = Field(None, description="Тип объекта из объявления (строка)")
+    Area:        Optional[float] = Field(None, description="Загальна площа об'єкта, кв.м")
+    Location:    Optional[str]   = Field(None, description="Місцезнаходження: місто / район / вулиця")
+    Year_Built:  Optional[int]   = Field(None, description="Рік побудови або null")
+    Status:      str             = Field("Аналог", description="Аналог | Продаж | Оренда | Закрито")
+    Object_Type: Optional[str]   = Field(None, description="Тип об'єкта з оголошення")
+    Legal_Status: Optional[str]  = Field(None, description="Право власності / оренда землі / ФДМУ")
+    Encumbrances: Optional[str]  = Field(None, description="Обтяження: пам'ятка / застава / арешт або null")
 
 
 class WarehouseProperty(BaseProperty):
-    """Склад / производство / логистика / имущественный комплекс."""
-    Ceiling_Height: Optional[float] = Field(None, description="Высота потолков, м")
-    Power_kW:       Optional[float] = Field(None, description="Электрическая мощность, кВт")
-    Floor_Type:     Optional[str]   = Field(None, description="Тип пола: бетон / асфальт / плитка / насипний / інше")
-    Ramps_Docks:    Optional[str]   = Field(None, description="Наличие рамп/доков: есть / нет / 2 рампи / etc.")
-    Land_Area_ha:   Optional[float] = Field(None, description="Площадь земельного участка, га")
-    Floors:         Optional[int]   = Field(None, description="Этажность")
+    """Склад / виробництво / логістика / майновий комплекс [C3]."""
+    Ceiling_Height: Optional[float] = Field(None, description="Висота стелі, м")
+    Power_kW:       Optional[float] = Field(None, description="Електрична потужність, кВт")
+    Floor_Type:     Optional[str]   = Field(None, description="Підлога: бетон / асфальт / плитка / насипний")
+    Ramps_Docks:    Optional[str]   = Field(None, description="Рампи/доки: є / немає / кількість / тип")
+    Land_Area_ha:   Optional[float] = Field(None, description="Площа земельної ділянки, га")
+    Floors:         Optional[int]   = Field(None, description="Поверховість")
+    Railway:        Optional[bool]  = Field(None, description="Залізнична гілка: true / false")
+    Security:       Optional[str]   = Field(None, description="Охорона: цілодобова / відеоспостереження / немає")
 
 
 class OfficeProperty(BaseProperty):
-    """Офис / бизнес-центр / коворкинг."""
-    Class:          Optional[Literal["A", "B", "C", "B+"]] = Field(None, description="Класс офиса: A / B+ / B / C")
-    Layout_Type:    Optional[str]  = Field(None, description="Тип планировки: open-space / кабинетная / смешанная")
-    Parking_Spaces: Optional[int]  = Field(None, description="Количество парковочных мест")
-    Renovation:     Optional[str]  = Field(None, description="Ремонт: без ремонту / косметичний / євро / дизайнерський / добрий стан")
-    Floors:         Optional[int]  = Field(None, description="Этажность здания")
+    """Офіс / бізнес-центр / коворкінг [C3]."""
+    Class:          Optional[Literal["A", "B+", "B", "C"]] = Field(None, description="Клас офісу: A / B+ / B / C")
+    Layout_Type:    Optional[str]  = Field(None, description="Планування: open-space / кабінетне / змішане")
+    Parking_Spaces: Optional[int]  = Field(None, description="Кількість паркомісць")
+    Renovation:     Optional[str]  = Field(None, description="Стан: без ремонту / косметичний / євро / дизайнерський")
+    Floors:         Optional[int]  = Field(None, description="Поверховість будівлі")
+    Management_Co:  Optional[str]  = Field(None, description="Керуюча компанія або null")
 
 
 class RetailProperty(BaseProperty):
-    """Торговля / стрит-ритейл / ТРЦ / магазин."""
-    Frontage_m:      Optional[float] = Field(None, description="Ширина витрины / фронтаж, м")
-    Floor_in_Building: Optional[int] = Field(None, description="Этаж расположения помещения")
-    Parking_Spaces:  Optional[int]   = Field(None, description="Парковочных мест")
-    Renovation:      Optional[str]   = Field(None, description="Состояние ремонта")
-    Separate_Entrance: Optional[bool] = Field(None, description="Есть отдельный вход: true / false")
+    """Торгівля / стріт-рітейл / ТРЦ / магазин [C3]."""
+    Frontage_m:       Optional[float] = Field(None, description="Вітринна лінія / фронтаж, м")
+    Floor_in_Building: Optional[int]  = Field(None, description="Поверх розташування")
+    Parking_Spaces:   Optional[int]   = Field(None, description="Паркомісць")
+    Renovation:       Optional[str]   = Field(None, description="Стан ремонту")
+    Separate_Entrance: Optional[bool] = Field(None, description="Окремий вхід: true / false")
+    Traffic:          Optional[str]   = Field(None, description="Трафік: пішохідний / автомобільний / змішаний")
 
 
 class LandProperty(BaseProperty):
-    """Земельный участок."""
-    Land_Area_ha:    Optional[float] = Field(None, description="Площадь участка, га (приоритет над Area)")
-    Land_Purpose:    Optional[str]   = Field(None, description="Целевое назначение: промисловість / комерція / с/г / житлова / інше")
-    Cadastral_Number: Optional[str]  = Field(None, description="Кадастровый номер, если указан")
-    Communications:  Optional[str]   = Field(None, description="Коммуникации: электричество / газ / вода / каналізація")
-    Distance_to_City_km: Optional[float] = Field(None, description="Расстояние до ближайшего города, км")
+    """Земельна ділянка [C3]."""
+    Land_Area_ha:        Optional[float] = Field(None, description="Площа, га (пріоритет над Area)")
+    Land_Purpose:        Optional[str]   = Field(None, description="Цільове призначення: промисловість / комерція / с/г / житлова")
+    Cadastral_Number:    Optional[str]   = Field(None, description="Кадастровий номер якщо вказаний")
+    Communications:      Optional[str]   = Field(None, description="Комунікації: електрика / газ / вода / каналізація")
+    Distance_to_City_km: Optional[float] = Field(None, description="Відстань до найближчого міста, км")
 
 
 class ResidentialProperty(BaseProperty):
-    """Жилая недвижимость (квартиры, дома) — нетипично, но встречается в клипингах."""
-    Rooms:       Optional[int]  = Field(None, description="Количество комнат")
-    Floor:       Optional[int]  = Field(None, description="Этаж квартиры")
-    Renovation:  Optional[str]  = Field(None, description="Состояние ремонта")
-    Furniture:   Optional[bool] = Field(None, description="Есть мебель: true / false")
+    """Житлова нерухомість (рідко, але зустрічається в кліпінгах)."""
+    Rooms:      Optional[int]  = Field(None, description="Кількість кімнат")
+    Floor:      Optional[int]  = Field(None, description="Поверх квартири")
+    Renovation: Optional[str]  = Field(None, description="Стан ремонту")
+    Furniture:  Optional[bool] = Field(None, description="Меблі: true / false")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  РЕЕСТР КАТЕГОРИЙ
-#  key   — точное имя категории, которое возвращает Claude на шаге 1
-#  value — Pydantic-модель с полями для извлечения
-#
-#  Чтобы добавить новую категорию: создай модель выше и добавь строку здесь.
+#  РЕЄСТР КАТЕГОРІЙ
+#  key   — ім'я категорії, яке повертає Claude на кроці 1
+#  value — Pydantic-модель зі специфічними полями
+#  Додати нову категорію: модель вище + рядок тут + правило в CLASSIFY_PROMPT
 # ═══════════════════════════════════════════════════════════════════════════
 
 CATEGORY_REGISTRY: dict[str, type[BaseProperty]] = {
-    "Warehouse":    WarehouseProperty,
-    "Office":       OfficeProperty,
-    "Retail":       RetailProperty,
-    "Land":         LandProperty,
-    "Residential":  ResidentialProperty,
+    "Warehouse":   WarehouseProperty,
+    "Office":      OfficeProperty,
+    "Retail":      RetailProperty,
+    "Land":        LandProperty,
+    "Residential": ResidentialProperty,
 }
 
 VALID_CATEGORIES = list(CATEGORY_REGISTRY.keys())
-DEFAULT_CATEGORY = "Warehouse"   # fallback если Claude не уверен
+DEFAULT_CATEGORY = "Warehouse"
 
 
 # ---------------------------------------------------------------------------
-# Парсинг YAML frontmatter
+# Парсинг / запись YAML frontmatter
 # ---------------------------------------------------------------------------
 
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)", re.DOTALL)
@@ -187,15 +202,13 @@ def write_md(path: Path, frontmatter: dict, body: str) -> None:
 # Vision: загрузка изображений
 # ---------------------------------------------------------------------------
 
+ALLOWED_MIME = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+_EXT_MIME    = {".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                ".png": "image/png",  ".gif": "image/gif", ".webp": "image/webp"}
+
+
 def _find_image_urls(body: str) -> list[str]:
     return re.findall(r"!\[.*?\]\((https?://[^\)]+)\)", body)
-
-
-ALLOWED_MIME = {"image/jpeg", "image/png", "image/gif", "image/webp"}
-
-# Расширения → MIME для URL без Content-Type
-_EXT_MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-             ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp"}
 
 
 def _fetch_image_b64(url: str) -> tuple[str, str] | None:
@@ -203,24 +216,16 @@ def _fetch_image_b64(url: str) -> tuple[str, str] | None:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=10) as resp:
             raw_ct = resp.headers.get("Content-Type", "")
-            mime = raw_ct.split(";")[0].strip().lower()
-
-            # Если сервер не вернул допустимый MIME — пробуем угадать по расширению URL
+            mime   = raw_ct.split(";")[0].strip().lower()
             if mime not in ALLOWED_MIME:
                 from pathlib import PurePosixPath
-                ext = PurePosixPath(url.split("?")[0]).suffix.lower()
+                ext  = PurePosixPath(url.split("?")[0]).suffix.lower()
                 mime = _EXT_MIME.get(ext, "image/jpeg")
-
-            # Финальная проверка
             if mime not in ALLOWED_MIME:
-                log.debug(f"Неподдерживаемый MIME {raw_ct!r}, пропускаю: {url[:60]}")
                 return None
-
             data = resp.read(IMAGE_MAX_BYTES + 1)
             if len(data) > IMAGE_MAX_BYTES:
-                log.debug(f"Изображение слишком большое, пропускаю: {url[:60]}")
                 return None
-
             return base64.standard_b64encode(data).decode(), mime
     except Exception as e:
         log.debug(f"Не удалось загрузить {url[:60]}: {e}")
@@ -235,218 +240,184 @@ def _build_image_blocks(body: str, max_images: int) -> list[dict]:
         result = _fetch_image_b64(url)
         if result:
             b64, mime = result
-            blocks.append({
-                "type": "image",
-                "source": {"type": "base64", "media_type": mime, "data": b64},
-            })
+            blocks.append({"type": "image",
+                           "source": {"type": "base64", "media_type": mime, "data": b64}})
     return blocks
 
 
 # ---------------------------------------------------------------------------
-# Claude API: вызовы
+# Claude API
 # ---------------------------------------------------------------------------
 
-def _call_claude(
-    content: list[dict],
-    system: str,
-    model: str,
-    max_tokens: int = 256,
-) -> str | None:
-    """
-    Низкоуровневый вызов Anthropic Messages API.
-    При ошибке обработки изображений автоматически повторяет запрос без них.
-    """
+def _call_claude(content: list[dict], system: str, model: str,
+                 max_tokens: int = 256) -> str | None:
+    """Вызов API с автоматическим fallback при ошибке изображений."""
     import anthropic
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-    def _do_request(c: list[dict]) -> str | None:
+    def _req(c: list[dict]) -> str | None:
         try:
             resp = client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                system=system,
+                model=model, max_tokens=max_tokens, system=system,
                 messages=[{"role": "user", "content": c}],
             )
             return resp.content[0].text.strip()
         except anthropic.BadRequestError as e:
-            msg = str(e)
-            if "Could not process image" in msg or "invalid_request_error" in msg:
+            if "Could not process image" in str(e) or "invalid_request_error" in str(e):
                 return "IMAGE_ERROR"
-            log.error(f"Claude API BadRequest: {e}")
+            log.error(f"BadRequest: {e}")
             return None
         except Exception as e:
             log.error(f"Claude API error: {e}")
             return None
 
-    result = _do_request(content)
-
-    # Если проблема с изображениями — повторяем без них
+    result = _req(content)
     if result == "IMAGE_ERROR":
-        text_only = [block for block in content if block.get("type") == "text"]
+        text_only = [b for b in content if b.get("type") == "text"]
         if len(text_only) < len(content):
-            log.warning("Изображения отклонены API — повтор запроса только с текстом")
-            result = _do_request(text_only)
+            log.warning("Изображения отклонены API — повтор только с текстом")
+            result = _req(text_only)
         if result == "IMAGE_ERROR":
-            log.error("Запрос без изображений тоже не прошёл")
             return None
-
     return result
 
 
 def _clean_json(raw: str) -> str:
-    """Убирает markdown-блоки ``` если модель их добавила."""
     raw = re.sub(r"^```(?:json)?\s*", "", raw)
     raw = re.sub(r"\s*```$", "", raw)
     return raw.strip()
 
 
-# ── Шаг 1: Классификация категории ──────────────────────────────────────────
+# ── Шаг 1: Классификация ────────────────────────────────────────────────────
 
-CLASSIFY_SYSTEM = "Ты — эксперт по коммерческой недвижимости. Отвечай только одним словом — названием категории."
+CLASSIFY_SYSTEM = (
+    "Ти — експерт з комерційної нерухомості. "
+    "Відповідай ТІЛЬКИ одним словом — назвою категорії."
+)
 
-CLASSIFY_PROMPT = f"""Определи категорию объекта недвижимости из текста объявления.
-Выбери ОДНУ категорию из списка: {", ".join(VALID_CATEGORIES)}.
-Отвечай только одним словом — точным именем категории из списка.
+CLASSIFY_PROMPT = f"""Визнач категорію об'єкта нерухомості з тексту оголошення.
+Вибери ОДНУ категорію зі списку: {", ".join(VALID_CATEGORIES)}.
 
-Правила выбора:
-- Warehouse  → склад, ангар, производство, логистика, имущественный комплекс
-- Office     → офис, бизнес-центр, коворкинг, административное помещение
-- Retail     → магазин, торговый центр, стрит-ритейл, торговое помещение
-- Land       → земельный участок, земля, ділянка
-- Residential → квартира, дом, котедж, апартаменты
+Правила:
+- Warehouse  → склад, ангар, виробництво, логістика, майновий комплекс
+- Office     → офіс, бізнес-центр, коворкінг, адміністративне приміщення
+- Retail     → магазин, торговий центр, стріт-рітейл, торгове приміщення
+- Land       → земельна ділянка, земля, ділянка
+- Residential → квартира, будинок, котедж, апартаменти
 
-Текст объявления:
+Текст оголошення:
 """
 
 
 def classify_category(text: str, model: str) -> str:
-    """Шаг 1: определяет категорию объекта. Возвращает имя категории."""
     content = [{"type": "text", "text": CLASSIFY_PROMPT + text[:6_000]}]
     raw = _call_claude(content, CLASSIFY_SYSTEM, model=model, max_tokens=20)
     if not raw:
         return DEFAULT_CATEGORY
-    # Ищем точное совпадение среди допустимых категорий
     for cat in VALID_CATEGORIES:
         if cat.lower() in raw.lower():
             return cat
-    log.warning(f"Категория не распознана: {raw!r} → используется {DEFAULT_CATEGORY}")
+    log.warning(f"Категория не распознана: {raw!r} → {DEFAULT_CATEGORY}")
     return DEFAULT_CATEGORY
 
 
-# ── Шаг 2: Извлечение полей по схеме ────────────────────────────────────────
+# ── Шаг 2: Извлечение полей ─────────────────────────────────────────────────
 
 EXTRACT_SYSTEM = (
-    "Ты — эксперт по анализу объявлений коммерческой недвижимости. "
-    "Отвечай ТОЛЬКО валидным JSON без пояснений и markdown-блоков."
+    "Ти — аналітик комерційної нерухомості. "
+    "Відповідай ТІЛЬКИ валідним JSON без пояснень і markdown-блоків."
 )
 
 
-def _schema_description(model_cls: type[BaseProperty]) -> str:
-    """Формирует читаемое описание полей для промпта из Pydantic-схемы."""
-    schema = model_cls.model_json_schema()
-    props = schema.get("properties", {})
-    lines = []
-    for field_name, field_info in props.items():
-        desc = field_info.get("description", "")
-        field_type = field_info.get("type", field_info.get("anyOf", ""))
-        lines.append(f'  "{field_name}": {desc}')
-    return "\n".join(lines)
-
-
-def extract_fields(
-    text: str,
-    category: str,
-    image_blocks: list[dict],
-    model: str,
-) -> dict | None:
-    """Шаг 2: извлекает поля по схеме категории. Возвращает словарь или None."""
-    model_cls = CATEGORY_REGISTRY[category]
-
-    # Пример заполненной схемы для промпта
-    schema_json = json.dumps(
-        model_cls.model_json_schema(),
-        ensure_ascii=False,
-        indent=2,
-    )
+def extract_fields(text: str, category: str,
+                   image_blocks: list[dict], model: str) -> dict | None:
+    model_cls  = CATEGORY_REGISTRY[category]
+    schema_json = json.dumps(model_cls.model_json_schema(), ensure_ascii=False, indent=2)
 
     prompt = (
-        f"Категория объекта: {category}\n\n"
-        f"Извлеки данные из объявления и верни JSON строго по этой JSON Schema:\n\n"
-        f"{schema_json}\n\n"
+        f"Категорія об'єкта: {category}\n\n"
+        f"Витягни дані з оголошення. JSON Schema:\n\n{schema_json}\n\n"
         "Правила:\n"
-        "- Числа без единиц измерения (только цифры)\n"
-        "- Если поле не указано в объявлении — верни null\n"
-        "- Status по умолчанию: 'Аналог' (если не указано иное)\n"
-        "- Для boolean: true или false (строчными)\n"
-        "- Price — только сумму числом (например: 2500000)\n"
-        "- Price_Currency — ОБЯЗАТЕЛЬНО: 'USD' если цена в $ / долларах, "
-        "'UAH' если в грн / гривнах / ₴. Анализируй заголовок и тело объявления.\n\n"
-        f"Текст объявления:\n{text[:12_000]}"
+        "- Числа без одиниць виміру (тільки цифри)\n"
+        "- Поле не вказано в оголошенні → null\n"
+        "- Status за замовчуванням: 'Аналог'\n"
+        "- Boolean: true або false\n"
+        "- Price — тільки число (напр.: 1350000)\n"
+        "- Price_Currency — ОБОВ'ЯЗКОВО: 'USD' якщо ціна в $ / доларах, "
+        "'UAH' якщо в грн / гривнях / ₴\n\n"
+        f"Текст оголошення:\n{text[:12_000]}"
     )
 
     content: list[dict] = image_blocks + [{"type": "text", "text": prompt}]
-    raw = _call_claude(content, EXTRACT_SYSTEM, model=model, max_tokens=768)
+    raw = _call_claude(content, EXTRACT_SYSTEM, model=model, max_tokens=1024)
     if not raw:
         return None
     try:
         data = json.loads(_clean_json(raw))
     except json.JSONDecodeError as e:
-        log.error(f"JSON parse error: {e}\nОтвет: {raw!r}")
+        log.error(f"JSON parse error: {e}\n→ {raw!r}")
         return None
 
-    # Валидация через Pydantic (приводит типы и отбрасывает лишние поля)
     try:
         validated = model_cls.model_validate(data)
         return validated.model_dump(exclude_none=True)
     except Exception as e:
-        log.warning(f"Pydantic validation warning: {e} — используется сырой JSON")
+        log.warning(f"Pydantic validation: {e} — используется сырой JSON")
         return data
 
 
 # ---------------------------------------------------------------------------
-# Нормализация цены и расчёт удельной стоимости
+# Шаг 3: Нормализация цены + расчёт удельных показателей [B1, C2]
 # ---------------------------------------------------------------------------
 
-def normalize_price(extracted: dict) -> dict:
+def enrich_price(extracted: dict, category: str) -> dict:
     """
-    Конвертирует Price в USD и рассчитывает Price_per_sqm.
+    Конвертирует Price в USD, применяет скидку на торг [B1],
+    рассчитывает удельные показатели.
 
-    Возвращает обогащённый словарь с полями:
+    Добавляет поля:
       Price             — итоговая цена в USD (int)
-      Price_Currency    — исходная валюта ('USD' / 'UAH')
-      Price_USD_raw     — цена в USD до округления (float, для отладки)
-      Price_per_sqm     — USD / кв.м (int), только если известна Area
+      Price_Currency    — исходная валюта
+      Price_Adjusted    — цена после скидки на торг (int)
+      Price_per_sqm     — USD/м² до торга (int)
+      Price_per_sqm_Adjusted — USD/м² после торга (int)
     """
-    result = dict(extracted)
-
-    raw_price    = result.get("Price")
-    currency     = result.get("Price_Currency") or "USD"
-    area         = result.get("Area")
+    result   = dict(extracted)
+    raw_price = result.get("Price")
+    currency  = result.get("Price_Currency") or "USD"
+    area      = result.get("Area")
+    discount  = DISCOUNT_RATES.get(category, 0.0)
 
     if raw_price is None:
         return result
 
-    # Конвертация UAH → USD
+    # ── Конвертация UAH → USD ───────────────────────────────────────────────
     if currency == "UAH":
         price_usd = raw_price / EXCHANGE_RATE
-        log.info(
-            f"  Конвертация: {raw_price:,.0f} UAH ÷ {EXCHANGE_RATE} = {price_usd:,.0f} USD"
-        )
+        log.info(f"  [C2] Конвертация: {raw_price:,.0f} грн ÷ {EXCHANGE_RATE} = {price_usd:,.0f} $")
     else:
         price_usd = float(raw_price)
 
-    result["Price_USD_raw"] = round(price_usd, 2)
-    result["Price"]         = int(round(price_usd))
+    result["Price"] = int(round(price_usd))
 
-    # Удельная стоимость
+    # ── Скидка на торг [B1] ─────────────────────────────────────────────────
+    price_adj = price_usd * (1 - discount)
+    result["Price_Adjusted"] = int(round(price_adj))
+    log.info(
+        f"  [B1] Торг -{discount*100:.0f}%: "
+        f"{result['Price']:,} $ → {result['Price_Adjusted']:,} $"
+    )
+
+    # ── Удельные показатели ─────────────────────────────────────────────────
     if area and area > 0:
-        ppsm = price_usd / area
-        result["Price_per_sqm"] = int(round(ppsm))
+        result["Price_per_sqm"]          = int(round(price_usd / area))
+        result["Price_per_sqm_Adjusted"] = int(round(price_adj / area))
         log.info(
-            f"  Удельная:    {result['Price']:,} USD ÷ {area:,.1f} м² = {result['Price_per_sqm']:,} USD/м²"
+            f"  [B1] Питома: {result['Price_per_sqm']:,} $/м²  "
+            f"(після торгу: {result['Price_per_sqm_Adjusted']:,} $/м²)"
         )
     else:
-        log.warning("  Area не определена — Price_per_sqm не рассчитан")
+        log.warning("  Area не определена — удельные показатели не рассчитаны")
 
     return result
 
@@ -455,87 +426,119 @@ def normalize_price(extracted: dict) -> dict:
 # Основная логика обработки файла
 # ---------------------------------------------------------------------------
 
-def process_file(
-    path: Path,
-    dry_run: bool = False,
-    fast_mode: bool = False,
-) -> bool:
+# Все поля разрешённые к записи в frontmatter
+_ALLOWED_FIELDS: set[str] = set()
+for _cls in CATEGORY_REGISTRY.values():
+    _ALLOWED_FIELDS.update(_cls.model_fields.keys())
+_ALLOWED_FIELDS.update({"Price_Adjusted", "Price_per_sqm", "Price_per_sqm_Adjusted"})
+
+
+def process_file(path: Path, dry_run: bool = False,
+                 fast_mode: bool = False) -> dict | None:
+    """
+    Обрабатывает один .md файл.
+    Возвращает словарь с результатами для сводной таблицы или None при ошибке.
+    """
     log.info(f"Обрабатываю: {path.name}")
 
     frontmatter, body = parse_md(path)
-
-    # Текст для анализа: заголовок + description из frontmatter + тело
     title       = frontmatter.get("title", "")
     description = frontmatter.get("description", "")
-    full_text   = f"Заголовок: {title}\n\nОписание: {description}\n\n{body}"
+    full_text   = f"Заголовок: {title}\n\nОпис: {description}\n\n{body}"
 
-    # Загружаем изображения
     image_blocks = _build_image_blocks(body, MAX_IMAGES)
     if image_blocks:
-        log.info(f"  Vision: {len(image_blocks)} изображений")
+        log.info(f"  Vision: {len(image_blocks)} зображень")
 
-    classify_model = MODEL_FAST                          # классификация всегда на Haiku
+    classify_model = MODEL_FAST
     extract_model  = MODEL_FAST if fast_mode else MODEL_SMART
 
-    # ── Шаг 1: классификация ──────────────────────────────────────────────
+    # Шаг 1
     category = classify_category(full_text, model=classify_model)
-    log.info(f"  Категория → {category}")
+    log.info(f"  Категорія → {category}")
 
-    # ── Шаг 2: извлечение полей ───────────────────────────────────────────
+    # Шаг 2
     extracted = extract_fields(full_text, category, image_blocks, model=extract_model)
     if extracted is None:
-        log.error(f"  Пропускаю {path.name} — не удалось извлечь данные")
-        return False
+        log.error(f"  Пропускаю {path.name}")
+        return None
 
-    log.info(f"  Извлечено (сырое): {extracted}")
+    log.info(f"  Вилучено (сире): {extracted}")
 
-    # ── Шаг 3: нормализация цены → USD + расчёт удельной ─────────────────
-    enriched = normalize_price(extracted)
+    # Шаг 3
+    enriched = enrich_price(extracted, category)
+
+    # Сводка для итоговой таблицы
+    summary = {
+        "file":      path.name[:55],
+        "category":  category,
+        "currency":  enriched.get("Price_Currency", "?"),
+        "price_orig": extracted.get("Price"),
+        "price_usd":  enriched.get("Price"),
+        "price_adj":  enriched.get("Price_Adjusted"),
+        "ppsm":       enriched.get("Price_per_sqm"),
+        "ppsm_adj":   enriched.get("Price_per_sqm_Adjusted"),
+        "area":       enriched.get("Area"),
+    }
 
     if dry_run:
-        raw_price  = extracted.get("Price")
-        currency   = extracted.get("Price_Currency", "USD")
-        price_usd  = enriched.get("Price")
-        ppsm       = enriched.get("Price_per_sqm")
-        area       = enriched.get("Area")
+        return summary
 
-        print(f"\n{'─'*60}")
-        print(f"Файл:      {path.name}")
-        print(f"Категория: {category}")
-        print(f"\n  [Цена]")
-        if currency == "UAH":
-            print(f"    Исходная:  {raw_price:,.0f} грн (UAH)")
-            print(f"    Курс:      1 USD = {EXCHANGE_RATE} UAH")
-            print(f"    → USD:     {price_usd:,} $")
-        else:
-            print(f"    Исходная:  {raw_price:,} $ (USD) — конвертация не нужна")
-            print(f"    → USD:     {price_usd:,} $")
-        if ppsm and area:
-            print(f"    Площадь:   {area:,.1f} м²")
-            print(f"    → USD/м²:  {ppsm:,} $/м²")
-        print(f"\n  [Все поля]")
-        # В dry-run показываем финальный вид (как будет записан в YAML)
-        display = {k: v for k, v in enriched.items() if k != "Price_USD_raw"}
-        print(json.dumps(display, ensure_ascii=False, indent=2))
-        return True
-
-    # ── Обновляем frontmatter ─────────────────────────────────────────────
-    # Перечень полей которые разрешено перезаписывать из Claude + вычисленные
-    allowed_fields: set[str] = set()
-    for cls in CATEGORY_REGISTRY.values():
-        allowed_fields.update(cls.model_fields.keys())
-    allowed_fields.update({"Price_per_sqm"})  # вычисляемое поле
-
+    # Запись в frontmatter
     for key, value in enriched.items():
-        if key in allowed_fields and key != "Price_USD_raw":
+        if key in _ALLOWED_FIELDS and key != "Price_USD_raw":
             frontmatter[key] = value
 
-    frontmatter["Category"] = category   # записываем определённую категорию
+    frontmatter["Category"] = category
     frontmatter["parsed"]   = True
 
     write_md(path, frontmatter, body)
-    log.info(f"  ✓ Записан: {path.name}")
-    return True
+    log.info(f"  ✓ Записано: {path.name}")
+    return summary
+
+
+# ---------------------------------------------------------------------------
+# Сводная таблица
+# ---------------------------------------------------------------------------
+
+def print_summary(results: list[dict]) -> None:
+    if not results:
+        return
+
+    sep  = "─" * 110
+    head = (
+        f"{'Файл':<52} {'Кат':>9} {'Вал':>4} "
+        f"{'Ціна ориг':>12} {'Ціна USD':>12} {'Торг USD':>12} "
+        f"{'$/м²':>7} {'$/м² торг':>10}"
+    )
+
+    print(f"\n{'═'*110}")
+    print("  ЗВЕДЕНА ТАБЛИЦЯ РЕЗУЛЬТАТІВ ОБРОБКИ")
+    print(f"{'═'*110}")
+    print(head)
+    print(sep)
+
+    for r in results:
+        def _fmt(v):
+            if v is None:
+                return "—"
+            return f"{int(v):,}".replace(",", " ")
+
+        orig_str = _fmt(r["price_orig"])
+        if r["currency"] == "UAH":
+            orig_str += " ₴"
+        else:
+            orig_str += " $"
+
+        print(
+            f"  {r['file']:<50} {r['category']:>9} {r['currency']:>4} "
+            f"{orig_str:>13} {_fmt(r['price_usd']):>11}$ "
+            f"{_fmt(r['price_adj']):>11}$ "
+            f"{_fmt(r['ppsm']):>7} {_fmt(r['ppsm_adj']):>10}"
+        )
+
+    print(sep)
+    print(f"  Оброблено: {len(results)} файлів\n")
 
 
 # ---------------------------------------------------------------------------
@@ -544,13 +547,13 @@ def process_file(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Двухступенчатый анализатор клипингов недвижимости через Claude"
+        description="Аналізатор кліпінгів нерухомості [методологія: skills/skill_analytics.md]"
     )
-    parser.add_argument("--dry-run",   action="store_true", help="Не записывать файлы, только вывести JSON")
-    parser.add_argument("--reparse",   action="store_true", help="Переобрабатывать даже parsed: true")
-    parser.add_argument("--file",      type=str, default=None, help="Обработать один конкретный файл")
-    parser.add_argument("--no-vision", action="store_true", help="Не загружать изображения")
-    parser.add_argument("--fast",      action="store_true", help="Использовать Haiku для обоих шагов (дешевле)")
+    parser.add_argument("--dry-run",       action="store_true")
+    parser.add_argument("--reparse",       action="store_true")
+    parser.add_argument("--file",          type=str, default=None)
+    parser.add_argument("--no-vision",     action="store_true")
+    parser.add_argument("--fast",          action="store_true")
     parser.add_argument("--clippings-dir", type=str, default=str(CLIPPINGS_DIR))
     args = parser.parse_args()
 
@@ -558,17 +561,16 @@ def main() -> None:
     if args.no_vision:
         MAX_IMAGES = 0
 
-    # Список файлов
     if args.file:
         target = Path(args.file)
         if not target.exists():
-            sys.exit(f"Файл не найден: {target}")
+            sys.exit(f"Файл не знайдено: {target}")
         files = [target]
     else:
-        clippings_dir = Path(args.clippings_dir)
-        if not clippings_dir.is_dir():
-            sys.exit(f"Папка не найдена: {clippings_dir}")
-        files = sorted(clippings_dir.rglob("*.md"))
+        d = Path(args.clippings_dir)
+        if not d.is_dir():
+            sys.exit(f"Папку не знайдено: {d}")
+        files = sorted(d.rglob("*.md"))
 
     to_process, skipped = [], 0
     for f in files:
@@ -578,45 +580,45 @@ def main() -> None:
             continue
         to_process.append(f)
 
-    log.info(f"Файлов: {len(files)} | К обработке: {len(to_process)} | Пропущено: {skipped}")
+    log.info(f"Файлів: {len(files)} | До обробки: {len(to_process)} | Пропущено: {skipped}")
 
     if not to_process:
-        log.info("Нечего обрабатывать.")
+        log.info("Нічого обробляти.")
         return
 
+    results = []
     ok = fail = 0
     for path in to_process:
-        if process_file(path, dry_run=args.dry_run, fast_mode=args.fast):
+        r = process_file(path, dry_run=args.dry_run, fast_mode=args.fast)
+        if r:
+            results.append(r)
             ok += 1
         else:
             fail += 1
 
-    log.info(f"Готово. Успешно: {ok} | Ошибок: {fail}")
+    log.info(f"Готово. Успішно: {ok} | Помилок: {fail}")
+    print_summary(results)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  КАК ДОБАВИТЬ НОВУЮ КАТЕГОРИЮ
+#  ЯК ДОДАТИ НОВУ КАТЕГОРІЮ
 # ═══════════════════════════════════════════════════════════════════════════
 #
-#  1. Создай Pydantic-модель, наследующую BaseProperty:
+#  1. Створи Pydantic-модель (успадковує BaseProperty):
 #
 #     class HotelProperty(BaseProperty):
-#         Stars:       Optional[int]  = Field(None, description="Звёздность отеля")
-#         Rooms_Count: Optional[int]  = Field(None, description="Количество номеров")
-#         Restaurant:  Optional[bool] = Field(None, description="Есть ресторан: true/false")
+#         Stars:       Optional[int]  = Field(None, description="Зірковість")
+#         Rooms_Count: Optional[int]  = Field(None, description="Кількість номерів")
 #
-#  2. Зарегистрируй в CATEGORY_REGISTRY (одна строка):
+#  2. Додай рядок у CATEGORY_REGISTRY:
+#         "Hotel": HotelProperty,
 #
-#     CATEGORY_REGISTRY: dict[str, type[BaseProperty]] = {
-#         ...
-#         "Hotel": HotelProperty,   # ← добавить здесь
-#     }
+#  3. Додай скидку в DISCOUNT_RATES:
+#         "Hotel": 0.07,
 #
-#  3. Добавь правило в CLASSIFY_PROMPT (одна строка в список):
+#  4. Додай правило в CLASSIFY_PROMPT:
+#         - Hotel → готель, хостел, апарт-готель
 #
-#     - Hotel → готель, хостел, апарт-готель, санаторій
-#
-#  Всё остальное (JSON-схема для промпта, валидация, запись в YAML) — автоматически.
 # ═══════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
