@@ -13,10 +13,10 @@
             "state": {
               "type": "pdf",
               "state": {
-                "file": "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf"
+                "file": "Объекты/Владимирская_8/wiki/info_brief.pdf"
               },
               "icon": "lucide-file-text",
-              "title": "2026-04-11_10-37-02_47_Техпаспорт"
+              "title": "info_brief"
             }
           }
         ]
@@ -92,7 +92,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf",
+                "file": "Объекты/Владимирская_8/wiki/info_brief.pdf",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +102,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для 2026-04-11_10-37-02_47_Техпаспорт"
+              "title": "Обратные ссылки для info_brief"
             }
           },
           {
@@ -111,12 +111,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf",
+                "file": "Объекты/Владимирская_8/wiki/info_brief.pdf",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из 2026-04-11_10-37-02_47_Техпаспорт"
+              "title": "Исходящие ссылки из info_brief"
             }
           },
           {
@@ -154,13 +154,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf",
+                "file": "Объекты/Владимирская_8/wiki/info_brief.pdf",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура 2026-04-11_10-37-02_47_Техпаспорт"
+              "title": "Структура info_brief"
             }
           }
         ]
@@ -183,12 +183,12 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "a76bafe3ab335dee",
+  "active": "89547ec64edd658d",
   "lastOpenFiles": [
+    "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf",
     "Объекты/Архив",
     "Объекты/Фастов_Брандта50/notes.md",
     "Объекты/Inbox/photos/2026-04-11_10-35-56_38.jpg",
-    "Объекты/Inbox/files/2026-04-11_10-37-02_47_Техпаспорт.pdf",
     "Объекты/Inbox/files",
     "Объекты/Inbox/photos/2026-04-11_10-35-56_37.jpg",
     "Объекты/Inbox/notes.md",
