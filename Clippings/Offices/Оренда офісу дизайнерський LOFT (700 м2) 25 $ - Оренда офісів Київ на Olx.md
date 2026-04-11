@@ -1,8 +1,9 @@
 ---
 Deal_Type: Rent
-Price: 25.0
 Price_Currency: USD
-Area: 700.0
+Rent_per_sqm: 25
+Rent_Monthly_Total: 17500
+Area: 700
 Object_Type: Office
 Floors: 7
 Status: Аналог
