@@ -181,14 +181,36 @@ def _find_image_urls(body: str) -> list[str]:
     return re.findall(r"!\[.*?\]\((https?://[^\)]+)\)", body)
 
 
+ALLOWED_MIME = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
+# Расширения → MIME для URL без Content-Type
+_EXT_MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+             ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp"}
+
+
 def _fetch_image_b64(url: str) -> tuple[str, str] | None:
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=10) as resp:
-            mime = resp.headers.get("Content-Type", "image/jpeg").split(";")[0].strip()
+            raw_ct = resp.headers.get("Content-Type", "")
+            mime = raw_ct.split(";")[0].strip().lower()
+
+            # Если сервер не вернул допустимый MIME — пробуем угадать по расширению URL
+            if mime not in ALLOWED_MIME:
+                from pathlib import PurePosixPath
+                ext = PurePosixPath(url.split("?")[0]).suffix.lower()
+                mime = _EXT_MIME.get(ext, "image/jpeg")
+
+            # Финальная проверка
+            if mime not in ALLOWED_MIME:
+                log.debug(f"Неподдерживаемый MIME {raw_ct!r}, пропускаю: {url[:60]}")
+                return None
+
             data = resp.read(IMAGE_MAX_BYTES + 1)
             if len(data) > IMAGE_MAX_BYTES:
+                log.debug(f"Изображение слишком большое, пропускаю: {url[:60]}")
                 return None
+
             return base64.standard_b64encode(data).decode(), mime
     except Exception as e:
         log.debug(f"Не удалось загрузить {url[:60]}: {e}")
@@ -220,20 +242,45 @@ def _call_claude(
     model: str,
     max_tokens: int = 256,
 ) -> str | None:
-    """Низкоуровневый вызов Anthropic Messages API."""
+    """
+    Низкоуровневый вызов Anthropic Messages API.
+    При ошибке обработки изображений автоматически повторяет запрос без них.
+    """
     import anthropic
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    try:
-        resp = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            system=system,
-            messages=[{"role": "user", "content": content}],
-        )
-        return resp.content[0].text.strip()
-    except Exception as e:
-        log.error(f"Claude API error: {e}")
-        return None
+
+    def _do_request(c: list[dict]) -> str | None:
+        try:
+            resp = client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": c}],
+            )
+            return resp.content[0].text.strip()
+        except anthropic.BadRequestError as e:
+            msg = str(e)
+            if "Could not process image" in msg or "invalid_request_error" in msg:
+                return "IMAGE_ERROR"
+            log.error(f"Claude API BadRequest: {e}")
+            return None
+        except Exception as e:
+            log.error(f"Claude API error: {e}")
+            return None
+
+    result = _do_request(content)
+
+    # Если проблема с изображениями — повторяем без них
+    if result == "IMAGE_ERROR":
+        text_only = [block for block in content if block.get("type") == "text"]
+        if len(text_only) < len(content):
+            log.warning("Изображения отклонены API — повтор запроса только с текстом")
+            result = _do_request(text_only)
+        if result == "IMAGE_ERROR":
+            log.error("Запрос без изображений тоже не прошёл")
+            return None
+
+    return result
 
 
 def _clean_json(raw: str) -> str:
