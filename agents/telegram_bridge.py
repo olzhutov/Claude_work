@@ -6,9 +6,10 @@ Telegram-бот для приёма заметок, фото и документ
 
 Логика:
 - /menu → inline-клавиатура выбора папки проекта
+- /run_extractor → запускает agents/extractor.py для текущей папки
 - Текст → notes.md (Inbox или корень проекта)
 - Фото (сжатые) → photos/ (Inbox) или корень проекта
-- Документы/изображения без сжатия → photos/ или files/ (Inbox) / корень проекта
+- Документы → photos/ или files/ (Inbox) / корень проекта
 - Фильтр по ALLOWED_USER_ID
 """
 
@@ -23,7 +24,9 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (
     BotCommand,
+    BufferedInputFile,
     CallbackQuery,
+    FSInputFile,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
@@ -83,7 +86,6 @@ def _is_allowed(user_id: int) -> bool:
 
 
 def _get_session(user_id: int) -> str:
-    """Возвращает текущую целевую папку пользователя (по умолчанию 'Inbox')."""
     return active_sessions.get(user_id, "Inbox")
 
 
@@ -93,15 +95,15 @@ def _scan_projects() -> list[str]:
     for p in sorted(OBJECTS_DIR.iterdir()):
         if (
             p.is_dir()
-            and not p.name.startswith(".")   # скрытые папки
-            and p.name not in SKIP_DIRS      # служебные: Inbox, Архив, __pycache__
+            and not p.name.startswith(".")
+            and p.name not in SKIP_DIRS
         ):
             projects.append(p.name)
     return projects
 
 
 def _build_menu_keyboard() -> InlineKeyboardMarkup:
-    """Строит inline-клавиатуру со списком проектов + кнопка Inbox."""
+    """Строит inline-клавиатуру со списком проектов + Inbox."""
     projects = _scan_projects()
     buttons = [
         [InlineKeyboardButton(text=name, callback_data=f"dest:{name}")]
@@ -113,29 +115,66 @@ def _build_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def _resolve_save_paths(session: str, filename: str, is_image: bool) -> tuple[Path, Path | None]:
+def _build_session_keyboard(session: str) -> InlineKeyboardMarkup | None:
+    """Возвращает клавиатуру действий для выбранного проекта (не Inbox)."""
+    if session == "Inbox":
+        return None
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="📄 Получить сводку", callback_data=f"summary:{session}"),
+    ]])
+
+
+def _find_summary_file(project_name: str) -> Path | None:
     """
-    Возвращает (save_path, notes_file_or_None).
-    - Inbox + изображение → Inbox/photos/
-    - Inbox + документ   → Inbox/files/
-    - Inbox + текст      → Inbox/notes.md
-    - Проект             → корень папки проекта
+    Ищет главный файл-сводку в папке проекта.
+    Приоритет:
+      1. wiki/info_brief.md
+      2. wiki/objects/*.md (первый по алфавиту)
+      3. Любой *.pdf в корне проекта
+      4. Любой *.md в корне проекта (кроме notes.md)
     """
+    project_dir = OBJECTS_DIR / project_name
+
+    # 1. wiki/info_brief.md
+    candidate = project_dir / "wiki" / "info_brief.md"
+    if candidate.exists():
+        return candidate
+
+    # 2. wiki/objects/*.md
+    objects_dir = project_dir / "wiki" / "objects"
+    if objects_dir.is_dir():
+        mds = sorted(objects_dir.glob("*.md"))
+        if mds:
+            return mds[0]
+
+    # 3. *.pdf в корне
+    pdfs = sorted(project_dir.glob("*.pdf"))
+    if pdfs:
+        return pdfs[0]
+
+    # 4. *.md в корне (кроме notes.md)
+    for md in sorted(project_dir.glob("*.md")):
+        if md.name != "notes.md":
+            return md
+
+    return None
+
+
+def _resolve_save_paths(session: str, filename: str, is_image: bool) -> Path:
     if session == "Inbox":
         if is_image:
-            return PHOTOS_DIR / filename, None
+            return PHOTOS_DIR / filename
         else:
             files_dir = INBOX_DIR / "files"
             files_dir.mkdir(parents=True, exist_ok=True)
-            return files_dir / filename, None
+            return files_dir / filename
     else:
         project_dir = OBJECTS_DIR / session
         project_dir.mkdir(parents=True, exist_ok=True)
-        return project_dir / filename, None
+        return project_dir / filename
 
 
 def _append_note(text: str, source: str = "text", session: str = "Inbox") -> None:
-    """Дописывает заметку в notes.md (Inbox) или в корень папки проекта."""
     if session == "Inbox":
         notes_path = NOTES_FILE
         header = "# Inbox — заметки\n"
@@ -174,7 +213,8 @@ async def cmd_start(message: Message) -> None:
         session = _get_session(uid)
         await message.answer(
             f"Готов! Текущая папка: {_session_label(session)}\n"
-            f"Используй /menu для смены объекта."
+            f"Используй /menu для смены объекта.",
+            reply_markup=_build_session_keyboard(session),
         )
     else:
         log.warning(f"[BLOCKED] Попытка доступа: user_id={uid}")
@@ -192,6 +232,47 @@ async def cmd_menu(message: Message) -> None:
     )
 
 
+@dp.message(Command("run_extractor"))
+async def cmd_run_extractor(message: Message) -> None:
+    uid = message.from_user.id
+    if not _is_allowed(uid):
+        return
+
+    session = _get_session(uid)
+    if session == "Inbox":
+        await message.answer("⚠️ Выберите конкретный объект через /menu перед запуском экстрактора.")
+        return
+
+    folder_path = OBJECTS_DIR / session
+    await message.answer(f"⏳ Запускаю экстрактор для `{session}`...", parse_mode="Markdown")
+    log.info(f"[EXTRACTOR] Запуск для {folder_path}")
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable,
+            str(BASE_DIR / "agents" / "extractor.py"),
+            str(folder_path),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=str(BASE_DIR),
+        )
+        stdout, stderr = await proc.communicate()
+
+        if proc.returncode == 0:
+            log.info(f"[EXTRACTOR] Завершён успешно для {session}")
+            await message.answer(f"✅ Обработка завершена для `{session}`.", parse_mode="Markdown")
+        else:
+            err = stderr.decode("utf-8", errors="replace")[-800:]
+            log.error(f"[EXTRACTOR] Ошибка: {err}")
+            await message.answer(
+                f"❌ Ошибка экстрактора:\n```\n{err}\n```",
+                parse_mode="Markdown",
+            )
+    except Exception as e:
+        log.exception("[EXTRACTOR] Исключение")
+        await message.answer(f"❌ Не удалось запустить экстрактор: {e}")
+
+
 @dp.callback_query(F.data.startswith("dest:"))
 async def cb_set_destination(callback: CallbackQuery) -> None:
     uid = callback.from_user.id
@@ -204,10 +285,35 @@ async def cb_set_destination(callback: CallbackQuery) -> None:
     label = _session_label(dest)
 
     await callback.message.edit_text(
-        f"✅ Режим изменён. Теперь все файлы сохраняются в папку: {label}"
+        f"✅ Режим изменён. Теперь все файлы сохраняются в папку: {label}",
+        reply_markup=_build_session_keyboard(dest),
     )
     await callback.answer()
     log.info(f"[SESSION] user={uid} → {dest}")
+
+
+@dp.callback_query(F.data.startswith("summary:"))
+async def cb_get_summary(callback: CallbackQuery) -> None:
+    uid = callback.from_user.id
+    if not _is_allowed(uid):
+        await callback.answer("Доступ запрещён.", show_alert=True)
+        return
+
+    project_name = callback.data.removeprefix("summary:")
+    await callback.answer()
+
+    summary_file = _find_summary_file(project_name)
+
+    if summary_file is None:
+        await callback.message.answer("Отчёт для этого объекта пока не сформирован.")
+        log.info(f"[SUMMARY] Файл не найден для {project_name}")
+        return
+
+    log.info(f"[SUMMARY] Отправляю: {summary_file}")
+    await callback.message.answer_document(
+        FSInputFile(summary_file, filename=summary_file.name),
+        caption=f"📄 {project_name} — {summary_file.name}",
+    )
 
 
 @dp.message(F.text)
@@ -240,7 +346,7 @@ async def handle_photo(message: Message) -> None:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     filename = f"{timestamp}_{message.message_id}.jpg"
 
-    save_path, _ = _resolve_save_paths(session, filename, is_image=True)
+    save_path = _resolve_save_paths(session, filename, is_image=True)
     file = await bot.get_file(photo.file_id)
     await bot.download_file(file.file_path, destination=save_path)
 
@@ -270,7 +376,7 @@ async def handle_document(message: Message) -> None:
     is_image = mime.startswith("image/")
     category = "photo-doc" if is_image else "file"
 
-    save_path, _ = _resolve_save_paths(session, filename, is_image=is_image)
+    save_path = _resolve_save_paths(session, filename, is_image=is_image)
     file = await bot.get_file(doc.file_id)
     await bot.download_file(file.file_path, destination=save_path)
 
@@ -287,10 +393,10 @@ async def handle_document(message: Message) -> None:
 # --- Запуск ---
 
 async def main() -> None:
-    # Регистрируем команды в меню Telegram
     await bot.set_my_commands([
         BotCommand(command="start", description="Статус бота"),
         BotCommand(command="menu", description="Выбрать папку объекта"),
+        BotCommand(command="run_extractor", description="Запустить экстрактор для текущего объекта"),
     ])
 
     if ALLOWED_USER_ID is None:
