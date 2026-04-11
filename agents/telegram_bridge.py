@@ -128,40 +128,40 @@ BINARY_EXTS = {".pdf", ".doc", ".docx", ".xls", ".xlsx"}
 TEXT_EXTS   = {".md", ".txt"}
 TG_MSG_LIMIT = 4096
 
+# Ключевые слова в имени файла, разрешённые для сводки (case-insensitive)
+SUMMARY_KEYWORDS = {"info_brief", "інфосправка", "інфо_справка", "презентація",
+                    "презентация", "presentation", "сводка", "summary"}
+
+
+def _is_summary_file(path: Path) -> bool:
+    """Проверяет, что имя файла содержит одно из ключевых слов сводки."""
+    name_lower = path.stem.lower()
+    return any(kw in name_lower for kw in SUMMARY_KEYWORDS)
+
 
 def _collect_summary_items(project_name: str) -> tuple[list[Path], list[Path]]:
     """
-    Собирает файлы для сводки:
-      binary_docs — .pdf/.doc/.docx/.xls/.xlsx из корня папки проекта
-      text_files  — wiki/info_brief.md, затем wiki/objects/*.md (или *.md из корня)
-    Возвращает (binary_docs, text_files).
+    Ищет файлы сводки СТРОГО внутри wiki/ (рекурсивно).
+    binary_docs — .pdf/.doc/.docx/.xls/.xlsx с подходящим именем
+    text_files  — .md/.txt с подходящим именем
     """
-    project_dir = OBJECTS_DIR / project_name
+    wiki_dir = OBJECTS_DIR / project_name / "wiki"
+    if not wiki_dir.is_dir():
+        return [], []
 
-    # --- Бинарные документы из корня ---
-    binary_docs = sorted(
-        p for p in project_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in BINARY_EXTS
-    )
-
-    # --- Текстовые сводки ---
+    binary_docs: list[Path] = []
     text_files: list[Path] = []
 
-    # 1. wiki/info_brief.md — главный приоритет
-    info_brief = project_dir / "wiki" / "info_brief.md"
-    if info_brief.exists():
-        text_files.append(info_brief)
-    else:
-        # 2. wiki/objects/*.md
-        objects_dir = project_dir / "wiki" / "objects"
-        if objects_dir.is_dir():
-            text_files.extend(sorted(objects_dir.glob("*.md")))
-
-        # 3. *.md / *.txt в корне (кроме notes.md)
-        if not text_files:
-            for p in sorted(project_dir.iterdir()):
-                if p.is_file() and p.suffix.lower() in TEXT_EXTS and p.name != "notes.md":
-                    text_files.append(p)
+    for p in sorted(wiki_dir.rglob("*")):
+        if not p.is_file():
+            continue
+        if not _is_summary_file(p):
+            continue
+        ext = p.suffix.lower()
+        if ext in BINARY_EXTS:
+            binary_docs.append(p)
+        elif ext in TEXT_EXTS:
+            text_files.append(p)
 
     return binary_docs, text_files
 
