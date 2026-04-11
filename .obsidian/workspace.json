@@ -11,12 +11,14 @@
             "id": "89547ec64edd658d",
             "type": "leaf",
             "state": {
-              "type": "image",
+              "type": "markdown",
               "state": {
-                "file": "Объекты/Владимирская_8/Акт1.jpeg"
+                "file": "Объекты/Владимирская_8/wiki/info_brief.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-image",
-              "title": "Акт1"
+              "icon": "lucide-file",
+              "title": "info_brief"
             }
           }
         ]
@@ -92,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Объекты/Владимирская_8/Акт1.jpeg",
+                "file": "Объекты/Владимирская_8/wiki/info_brief.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для Акт1"
+              "title": "Обратные ссылки для info_brief"
             }
           },
           {
@@ -111,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Объекты/Владимирская_8/Акт1.jpeg",
+                "file": "Объекты/Владимирская_8/wiki/info_brief.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из Акт1"
+              "title": "Исходящие ссылки из info_brief"
             }
           },
           {
@@ -154,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Объекты/Владимирская_8/Акт1.jpeg",
+                "file": "Объекты/Владимирская_8/wiki/info_brief.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура Акт1"
+              "title": "Структура info_brief"
             }
           }
         ]
@@ -179,11 +181,14 @@
       "templates:Вставить шаблон": false,
       "command-palette:Открыть палитру команд": false,
       "bases:Создать новую базу": false,
-      "terminal:Open terminal": false
+      "terminal:Open terminal": false,
+      "obsidian-git:Open Git source control": false
     }
   },
   "active": "89547ec64edd658d",
   "lastOpenFiles": [
+    "Объекты/Владимирская_8/Акт1.jpeg",
+    "Объекты/Владимирская_8/wiki/info_brief.md",
     "Объекты/Владимирская_8/wiki/topics/Охоронний_статус_Володимирська_8.md",
     "Объекты/Владимирская_8/wiki/topics/Ланцюг_власників_Володимирська_8.md",
     "Объекты/Владимирская_8/wiki/tenants/Інфоком_Премісес.md",
@@ -208,7 +213,6 @@
     "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (2).jpeg",
     "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (1).jpeg",
     "Объекты/Владимирская_8/WhatsApp Image 2026-04-02 at 09.12.53.jpeg",
-    "Объекты/Владимирская_8/Акт1.jpeg",
     "Объекты/Фастов_Брандта50/wiki/objects/Майновий_комплекс_Фастів_Бранта_50.md",
     "Объекты/Добро пожаловать.md",
     "Объекты/Фастов_Брандта50/wiki/financials/Потенційні_клієнти_Бранта_50.md",
@@ -227,8 +231,6 @@
     "Объекты/Фастов_Брандта50/Юридичні_ризики_Бранта_50.md",
     "Объекты/Фастов_Брандта50/Ланцюг_власників_Бранта_50.md",
     "Объекты/Фастов_Брандта50/Атлас_Інвест_Буд.md",
-    "Объекты/Фастов_Брандта50/Атлас_Технолоджи_Груп.md",
-    "Объекты/Фастов_Брандта50/Майновий_комплекс_Фастів_Бранта_50.md",
-    "Объекты/Фастов_Брандта50/Договір_КП_2238_Брандта_50_2025.md"
+    "Объекты/Фастов_Брандта50/Атлас_Технолоджи_Груп.md"
   ]
 }
