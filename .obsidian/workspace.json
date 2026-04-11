@@ -11,12 +11,14 @@
             "id": "89547ec64edd658d",
             "type": "leaf",
             "state": {
-              "type": "image",
+              "type": "markdown",
               "state": {
-                "file": "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg"
+                "file": "Объекты/Inbox/notes.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-image",
-              "title": "2026-04-11_10-26-47_uO0Up-"
+              "icon": "lucide-file",
+              "title": "notes"
             }
           }
         ]
@@ -92,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg",
+                "file": "Объекты/Inbox/notes.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для 2026-04-11_10-26-47_uO0Up-"
+              "title": "Обратные ссылки для notes"
             }
           },
           {
@@ -111,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg",
+                "file": "Объекты/Inbox/notes.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из 2026-04-11_10-26-47_uO0Up-"
+              "title": "Исходящие ссылки из notes"
             }
           },
           {
@@ -154,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg",
+                "file": "Объекты/Inbox/notes.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура 2026-04-11_10-26-47_uO0Up-"
+              "title": "Структура notes"
             }
           }
         ]
@@ -185,8 +187,8 @@
   },
   "active": "89547ec64edd658d",
   "lastOpenFiles": [
-    "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
     "Объекты/Inbox/photos/2026-04-11_10-26-47_uO0Up-.jpg",
+    "Объекты/Inbox/photos/2026-04-11_10-21-44.jpg",
     "Объекты/Inbox/notes.md",
     "AGENTS_README.md",
     "agents/telegram_bridge.py",
