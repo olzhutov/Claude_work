@@ -38,8 +38,8 @@ INBOX_DIR = OBJECTS_DIR / "Inbox"
 PHOTOS_DIR = INBOX_DIR / "photos"
 NOTES_FILE = INBOX_DIR / "notes.md"
 
-# Папки, которые не являются проектами
-SKIP_DIRS = {"Inbox", "Lebedyovka", "__pycache__", ".obsidian"}
+# Папки в корне Объекты/, которые не являются активными проектами
+SKIP_DIRS = {"Inbox", "Архив", "__pycache__"}
 
 load_dotenv(BASE_DIR / ".env")
 
@@ -88,10 +88,14 @@ def _get_session(user_id: int) -> str:
 
 
 def _scan_projects() -> list[str]:
-    """Возвращает список папок объектов в Объекты/ (исключает служебные)."""
+    """Возвращает активные проекты из корня Объекты/ (только прямые подпапки)."""
     projects = []
     for p in sorted(OBJECTS_DIR.iterdir()):
-        if p.is_dir() and not p.name.startswith(".") and p.name not in SKIP_DIRS:
+        if (
+            p.is_dir()
+            and not p.name.startswith(".")   # скрытые папки
+            and p.name not in SKIP_DIRS      # служебные: Inbox, Архив, __pycache__
+        ):
             projects.append(p.name)
     return projects
 
