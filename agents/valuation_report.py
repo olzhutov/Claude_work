@@ -755,14 +755,7 @@ def generate_excel(subject: dict, b1: dict, b2: dict, b3: dict,
     for row_n, label, val, fmt, _ in subj_rows:
         ws.row_dimensions[row_n].height = 17
         _w(ws, row_n, 1, label, bold=True, bg=C_STRIPE, align="left", sz=9)
-        ws.merge_cells(start_row=row_n, start_column=1,
-                       end_row=row_n, end_column=4)
         _inp(ws, row_n, 2, val, fmt=fmt)
-        # Очищаємо об'єднані комірки щоб не було артефактів
-        for cc in range(2, 5):
-            if cc != 2:
-                c = ws.cell(row=row_n, column=cc)
-                c.border = _BDR
 
     ws.row_dimensions[22].height = 6
 
