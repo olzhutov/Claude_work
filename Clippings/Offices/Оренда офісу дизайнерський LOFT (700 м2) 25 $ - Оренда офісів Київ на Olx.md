@@ -1,12 +1,24 @@
 ---
-title: "Оренда офісу дизайнерський LOFT (700 м2): 25 $ - Оренда офісів Київ на Olx"
-source: "https://www.olx.ua/d/uk/obyavlenie/orenda-ofsu-dizaynerskiy-loft-700-m2-IDXRp9X.html?isPreviewActive=0&search_reason=search%7Corganic&sliderIndex=13"
-author:
-published:
-created: 2026-04-11
-description: "25 $: Аренда офиса, ул. Владимирская, Центр, ст.м. Золотые Ворота\МайданОбщая площадь - 700кв.м..Коммунальные услуги - в соответствии с показателями счетчиков (Электроэнергия, водоснабжение, отопление)..."
-tags:
-  - "clippings"
+Deal_Type: Rent
+Price: 25.0
+Price_Currency: USD
+Area: 700.0
+Object_Type: Office
+Floors: 7
+Status: Аналог
+Location: ул. Владимирская, Центр, Київ
+District: Шевченківський
+Condition_Type: з ремонтом
+Renovation_Style: новий офісний
+Parking_Open: true
+Parking_Underground: false
+Building_Class: A
+Layout_Type: змішане
+Parking_Spaces: 2
+Shelter: true
+Location_Zone: Center
+Category: Office
+parsed: true
 ---
 [Перейти до нижнього колонтитула](#footerContent)
 

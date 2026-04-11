@@ -491,12 +491,21 @@ def process_file(path: Path, dry_run: bool = False) -> dict | None:
 
     subdir_name = CATEGORY_DIRS.get(category)
     if subdir_name:
-        dest_dir = path.parent / subdir_name
+        # Цільова папка ЗАВЖДИ відносно кореня CLIPPINGS_DIR, не path.parent
+        dest_dir = CLIPPINGS_DIR / subdir_name
         dest_dir.mkdir(exist_ok=True)
         dest = dest_dir / path.name
-        path.rename(dest)
-        log.info(f"  → Переміщено: {subdir_name}/{path.name}")
-        summary["moved_to"] = str(dest_dir.name)
+
+        if path.resolve() == dest.resolve():
+            log.info(f"  ↷ Вже в цільовій папці: {subdir_name}/{path.name}")
+            summary["moved_to"] = subdir_name
+        elif dest.exists():
+            log.warning(f"  ⚠ Файл вже існує в {dest} — пропускаю переміщення")
+            summary["moved_to"] = subdir_name
+        else:
+            path.rename(dest)
+            log.info(f"  → Переміщено: {subdir_name}/{path.name}")
+            summary["moved_to"] = subdir_name
 
     return summary
 
@@ -551,6 +560,57 @@ def print_summary(results: list[dict]) -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Очищення вкладених дублюючих папок
+# ---------------------------------------------------------------------------
+
+def cleanup_nested_dirs(clippings_dir: Path) -> None:
+    """
+    Знаходить файли у Clippings/{Cat}/{Cat}/ (подвійна вкладеність),
+    переміщує їх на рівень вище до Clippings/{Cat}/ і видаляє порожні папки.
+    Викликається автоматично на початку кожного запуску.
+    """
+    moved_total = 0
+
+    for cat_dir in sorted(clippings_dir.iterdir()):
+        if not cat_dir.is_dir():
+            continue
+        # Шукаємо підпапки з тією ж назвою або з будь-якою категорійною назвою
+        for sub_dir in sorted(cat_dir.iterdir()):
+            if not sub_dir.is_dir():
+                continue
+            # Якщо підпапка є будь-якою з категорійних — це дубль
+            all_cat_dirs = set(CATEGORY_DIRS.values())
+            if sub_dir.name not in all_cat_dirs:
+                continue
+
+            # Переміщуємо *.md з sub_dir → cat_dir або далі в CLIPPINGS_DIR/{sub_dir.name}
+            correct_dir = clippings_dir / sub_dir.name
+            correct_dir.mkdir(exist_ok=True)
+
+            for md_file in sorted(sub_dir.glob("*.md")):
+                dest = correct_dir / md_file.name
+                if dest.exists():
+                    log.warning(f"  [cleanup] Файл вже існує, пропускаю: {md_file.name}")
+                    continue
+                md_file.rename(dest)
+                log.info(f"  [cleanup] {sub_dir.parent.name}/{sub_dir.name}/"
+                         f"{md_file.name} → {correct_dir.name}/{md_file.name}")
+                moved_total += 1
+
+            # Видаляємо порожню підпапку
+            try:
+                sub_dir.rmdir()
+                log.info(f"  [cleanup] Видалено порожню папку: {sub_dir}")
+            except OSError:
+                log.warning(f"  [cleanup] Папка не порожня, не видалено: {sub_dir}")
+
+    if moved_total:
+        log.info(f"[cleanup] Переміщено файлів: {moved_total}")
+    else:
+        log.info("[cleanup] Вкладених дублів не знайдено.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="CRE кліпінг-аналізатор [.agents/skills/cre-valuation/]"
@@ -570,6 +630,10 @@ def main() -> None:
         d = Path(args.clippings_dir)
         if not d.is_dir():
             sys.exit(f"Папку не знайдено: {d}")
+
+        # Спочатку очищуємо вкладені дублі (Offices/Offices/, Warehouses/Warehouses/)
+        cleanup_nested_dirs(d)
+
         files = sorted(d.rglob("*.md"))
 
     to_process, skipped = [], 0
