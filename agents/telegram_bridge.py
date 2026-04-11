@@ -344,13 +344,11 @@ async def cb_get_summary(callback: CallbackQuery) -> None:
         content = txt_path.read_text(encoding="utf-8").strip()
         if not content:
             continue
-        header = f"📄 *{txt_path.name}*\n\n"
-        parts = _split_text(header + content)
-        for i, part in enumerate(parts):
-            await callback.message.answer(
-                part,
-                parse_mode="Markdown" if i == 0 else None,
-            )
+        # Заголовок отдельным сообщением с Markdown
+        await callback.message.answer(f"📄 *{txt_path.name}*", parse_mode="Markdown")
+        # Содержимое — plain text (MD-файл содержит символы * _ которые ломают Telegram-парсер)
+        for part in _split_text(content):
+            await callback.message.answer(part)
 
 
 @dp.message(F.text)
