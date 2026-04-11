@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "cre_analytics/📊 База аналогов (Склады).md",
+                "file": "CLAUDE Analytics.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "📊 База аналогов (Склады)"
+              "title": "CLAUDE Analytics"
             }
           }
         ],
@@ -109,7 +109,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "cre_analytics/📊 База аналогов (Склады).md",
+                "file": "CLAUDE Analytics.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -119,7 +119,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для 📊 База аналогов (Склады)"
+              "title": "Обратные ссылки для CLAUDE Analytics"
             }
           },
           {
@@ -128,12 +128,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "cre_analytics/📊 База аналогов (Склады).md",
+                "file": "CLAUDE Analytics.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из 📊 База аналогов (Склады)"
+              "title": "Исходящие ссылки из CLAUDE Analytics"
             }
           },
           {
@@ -171,13 +171,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "cre_analytics/📊 База аналогов (Склады).md",
+                "file": "CLAUDE Analytics.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура 📊 База аналогов (Склады)"
+              "title": "Структура CLAUDE Analytics"
             }
           }
         ]
@@ -202,8 +202,9 @@
   },
   "active": "40ee8e0d69895392",
   "lastOpenFiles": [
-    "Clippings/ТОРГ ‼️ Продаж під виробництво або склад, Київ, Правий берег, Видубичі 2 800 000 $ - Продаж складів, ангарів Київ на Olx.md",
     "cre_analytics/📊 База аналогов (Склады).md",
+    "CLAUDE Analytics.md",
+    "Clippings/ТОРГ ‼️ Продаж під виробництво або склад, Київ, Правий берег, Видубичі 2 800 000 $ - Продаж складів, ангарів Київ на Olx.md",
     "cre_analytics/📊 База аналогов (Склады)",
     "Clippings/Виробничо складське приміщення 1500м2, Радистів 64 480 000 $ - Продаж складів, ангарів Київ на Olx.md",
     "Clippings/Склад 5000 м2 Дарниця 1 350 000 $ - Продаж складів, ангарів Київ на Olx.md",
@@ -246,7 +247,6 @@
     "Объекты/log.md",
     "Объекты/Фастов_Брандта50/wiki/topics/Юридичні_ризики_Бранта_50.md",
     "Объекты/Фастов_Брандта50/wiki/topics/Схема_угоди_оренда_викуп.md",
-    "Объекты/Фастов_Брандта50/wiki/topics/Судова_справа_911_824_26.md",
-    "Объекты/Фастов_Брандта50/wiki/topics/Ланцюг_власників_Бранта_50.md"
+    "Объекты/Фастов_Брандта50/wiki/topics/Судова_справа_911_824_26.md"
   ]
 }
