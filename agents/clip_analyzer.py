@@ -294,8 +294,33 @@ CLASSIFY_PROMPT = (
 )
 
 
+# Примусові keyword-правила (до виклику API) [C3]
+_KEYWORD_OVERRIDES: list[tuple[list[str], str]] = [
+    (["офіс", "оренда приміщення", "бізнес-центр", "коворкінг"], "Office"),
+    (["склад", "ангар", "виробнич", "логістик", "майновий комплекс"], "Warehouse"),
+    (["магазин", "трц", "стріт-рітейл", "торговель"], "Retail"),
+    (["земельн", "ділянка", "кадастр"], "Land"),
+    (["квартир", "будинок", "резиденц"], "Residential"),
+]
+
+
+def _keyword_category(text: str) -> str | None:
+    """Повертає категорію якщо є чіткий keyword-збіг, інакше None."""
+    lower = text.lower()
+    for keywords, cat in _KEYWORD_OVERRIDES:
+        if any(kw in lower for kw in keywords):
+            return cat
+    return None
+
+
 def classify_category(text: str) -> str:
     clean = _clean_text(text, limit=1500)
+    # Спочатку — детермінований keyword-матч (без витрат API)
+    kw_cat = _keyword_category(clean)
+    if kw_cat:
+        log.info(f"  Категорія (keyword) → {kw_cat}")
+        return kw_cat
+    # Якщо keyword не спрацював — запит до Claude
     raw = _call_claude(CLASSIFY_PROMPT + clean, CLASSIFY_SYSTEM, max_tokens=10)
     if not raw:
         return DEFAULT_CATEGORY
