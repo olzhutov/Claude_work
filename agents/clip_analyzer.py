@@ -242,6 +242,15 @@ CATEGORY_REGISTRY: dict[str, type[BaseProperty]] = {
 VALID_CATEGORIES = list(CATEGORY_REGISTRY.keys())
 DEFAULT_CATEGORY = "Warehouse"
 
+# ── Маппинг категорій → папки для сортування ──────────────────────────────
+CATEGORY_DIRS: dict[str, str] = {
+    "Warehouse":   "Warehouses",
+    "Office":      "Offices",
+    "Retail":      "Retail",
+    "Land":        "Land",
+    "Residential": "Residential",
+}
+
 # Всі поля дозволені до запису у frontmatter
 _ALLOWED_FIELDS: set[str] = set()
 for _cls in CATEGORY_REGISTRY.values():
@@ -587,6 +596,17 @@ def process_file(path: Path, dry_run: bool = False,
 
     write_md(path, frontmatter, body)
     log.info(f"  ✓ Записано: {path.name}")
+
+    # ── Сортування у підпапку за категорією ───────────────────────────────
+    subdir_name = CATEGORY_DIRS.get(category)
+    if subdir_name:
+        dest_dir = path.parent / subdir_name
+        dest_dir.mkdir(exist_ok=True)
+        dest = dest_dir / path.name
+        path.rename(dest)
+        log.info(f"  → Переміщено: {subdir_name}/{path.name}")
+        summary["moved_to"] = str(dest_dir.name)
+
     return summary
 
 
@@ -611,8 +631,8 @@ def print_summary(results: list[dict]) -> None:
     print("  ЗВЕДЕНА ТАБЛИЦЯ РЕЗУЛЬТАТІВ")
     print(f"{'═' * W}")
     print(
-        f"  {'Файл':<46} {'Кат':>9} {'Угода':>5} {'Район':<18} {'Зона':>10} "
-        f"{'Ціна/Ставка USD':>18} {'Після торгу':>13}"
+        f"  {'Файл':<44} {'Кат':>9} {'Угода':>5} {'Район':<16} {'Зона':>10} "
+        f"{'Ціна/Ставка USD':>17} {'Після торгу':>13} {'Папка':>12}"
     )
     print(f"  {'─' * (W - 2)}")
 
@@ -622,14 +642,15 @@ def print_summary(results: list[dict]) -> None:
             price_str = _fmt(r["price_usd"], " $")
             adj_str   = _fmt(r["price_adj"], " $")
         else:
-            # Rent: показуємо $/м²/міс
             price_str = _fmt(r["rent_psm"], " $/м²")
             adj_str   = _fmt(r["rent_adj"], " $/м²")
 
+        moved = r.get("moved_to", "—")
+
         print(
-            f"  {r['file']:<46} {r['category']:>9} {deal:>5} "
-            f"{(r['district'] or '—'):<18} {r['zone']:>10} "
-            f"{price_str:>18} {adj_str:>13}"
+            f"  {r['file']:<44} {r['category']:>9} {deal:>5} "
+            f"{(r['district'] or '—'):<16} {r['zone']:>10} "
+            f"{price_str:>17} {adj_str:>13} {moved:>12}"
         )
 
     print(f"  {'─' * (W - 2)}")
