@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Объекты/Владимирская_8/wiki/info_brief.md",
+                "file": "AGENTS_README.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "info_brief"
+              "title": "AGENTS_README"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Объекты/Владимирская_8/wiki/info_brief.md",
+                "file": "AGENTS_README.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Обратные ссылки для info_brief"
+              "title": "Обратные ссылки для AGENTS_README"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Объекты/Владимирская_8/wiki/info_brief.md",
+                "file": "AGENTS_README.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Исходящие ссылки из info_brief"
+              "title": "Исходящие ссылки из AGENTS_README"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Объекты/Владимирская_8/wiki/info_brief.md",
+                "file": "AGENTS_README.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Структура info_brief"
+              "title": "Структура AGENTS_README"
             }
           }
         ]
@@ -187,8 +187,9 @@
   },
   "active": "89547ec64edd658d",
   "lastOpenFiles": [
-    "Объекты/Владимирская_8/Акт1.jpeg",
     "Объекты/Владимирская_8/wiki/info_brief.md",
+    "Объекты/Владимирская_8/wiki/info_brief.pdf",
+    "Объекты/Владимирская_8/Акт1.jpeg",
     "Объекты/Владимирская_8/wiki/topics/Охоронний_статус_Володимирська_8.md",
     "Объекты/Владимирская_8/wiki/topics/Ланцюг_власників_Володимирська_8.md",
     "Объекты/Владимирская_8/wiki/tenants/Інфоком_Премісес.md",
@@ -205,7 +206,6 @@
     "Объекты/Lebedyovka",
     "Объекты/Владимирская_8/Orenda-premialnogo-osobnyaka-na-Volodimirskij-8.pdf",
     "Объекты/Владимирская_8/info_brief 2.pdf",
-    "Объекты/Владимирская_8/info_brief 2.docx",
     "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.26.jpeg",
     "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25.jpeg",
     "Объекты/Владимирская_8/WhatsApp Image 2026-03-19 at 13.43.25 (4).jpeg",
