@@ -54,6 +54,9 @@ if not ANTHROPIC_API_KEY:
 MODEL_SMART = "claude-sonnet-4-6"   # для точного извлечения (шаг 2)
 MODEL_FAST  = "claude-haiku-4-5-20251001"  # для классификации (шаг 1) и режима --fast
 
+# Жёсткий курс конвертации UAH → USD (менять только здесь)
+EXCHANGE_RATE: float = 43.5
+
 MAX_IMAGES     = 3          # сколько картинок передавать в Vision (0 = отключить)
 IMAGE_MAX_BYTES = 4 * 1024 * 1024
 
@@ -70,7 +73,14 @@ log = logging.getLogger(__name__)
 
 class BaseProperty(BaseModel):
     """Общие поля для всех типов объектов."""
-    Price:      Optional[float] = Field(None, description="Цена в числах (только цифры, без валюты)")
+    Price:          Optional[float] = Field(None, description="Цена в числах (только цифры, без валюты и символов)")
+    Price_Currency: Optional[Literal["USD", "UAH"]] = Field(
+        None,
+        description=(
+            "Валюта цены из объявления: 'USD' если цена в долларах ($, USD, дол.), "
+            "'UAH' если в гривнах (грн, ₴, UAH). ОБЯЗАТЕЛЬНО указать."
+        ),
+    )
     Area:       Optional[float] = Field(None, description="Общая площадь объекта, кв.м")
     Location:   Optional[str]   = Field(None, description="Краткое описание местоположения: город / район / трасса")
     Year_Built: Optional[int]   = Field(None, description="Год постройки/сдачи или null")
@@ -367,7 +377,10 @@ def extract_fields(
         "- Числа без единиц измерения (только цифры)\n"
         "- Если поле не указано в объявлении — верни null\n"
         "- Status по умолчанию: 'Аналог' (если не указано иное)\n"
-        "- Для boolean: true или false (строчными)\n\n"
+        "- Для boolean: true или false (строчными)\n"
+        "- Price — только сумму числом (например: 2500000)\n"
+        "- Price_Currency — ОБЯЗАТЕЛЬНО: 'USD' если цена в $ / долларах, "
+        "'UAH' если в грн / гривнах / ₴. Анализируй заголовок и тело объявления.\n\n"
         f"Текст объявления:\n{text[:12_000]}"
     )
 
@@ -388,6 +401,54 @@ def extract_fields(
     except Exception as e:
         log.warning(f"Pydantic validation warning: {e} — используется сырой JSON")
         return data
+
+
+# ---------------------------------------------------------------------------
+# Нормализация цены и расчёт удельной стоимости
+# ---------------------------------------------------------------------------
+
+def normalize_price(extracted: dict) -> dict:
+    """
+    Конвертирует Price в USD и рассчитывает Price_per_sqm.
+
+    Возвращает обогащённый словарь с полями:
+      Price             — итоговая цена в USD (int)
+      Price_Currency    — исходная валюта ('USD' / 'UAH')
+      Price_USD_raw     — цена в USD до округления (float, для отладки)
+      Price_per_sqm     — USD / кв.м (int), только если известна Area
+    """
+    result = dict(extracted)
+
+    raw_price    = result.get("Price")
+    currency     = result.get("Price_Currency") or "USD"
+    area         = result.get("Area")
+
+    if raw_price is None:
+        return result
+
+    # Конвертация UAH → USD
+    if currency == "UAH":
+        price_usd = raw_price / EXCHANGE_RATE
+        log.info(
+            f"  Конвертация: {raw_price:,.0f} UAH ÷ {EXCHANGE_RATE} = {price_usd:,.0f} USD"
+        )
+    else:
+        price_usd = float(raw_price)
+
+    result["Price_USD_raw"] = round(price_usd, 2)
+    result["Price"]         = int(round(price_usd))
+
+    # Удельная стоимость
+    if area and area > 0:
+        ppsm = price_usd / area
+        result["Price_per_sqm"] = int(round(ppsm))
+        log.info(
+            f"  Удельная:    {result['Price']:,} USD ÷ {area:,.1f} м² = {result['Price_per_sqm']:,} USD/м²"
+        )
+    else:
+        log.warning("  Area не определена — Price_per_sqm не рассчитан")
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -426,23 +487,47 @@ def process_file(
         log.error(f"  Пропускаю {path.name} — не удалось извлечь данные")
         return False
 
-    log.info(f"  Извлечено: {extracted}")
+    log.info(f"  Извлечено (сырое): {extracted}")
+
+    # ── Шаг 3: нормализация цены → USD + расчёт удельной ─────────────────
+    enriched = normalize_price(extracted)
 
     if dry_run:
+        raw_price  = extracted.get("Price")
+        currency   = extracted.get("Price_Currency", "USD")
+        price_usd  = enriched.get("Price")
+        ppsm       = enriched.get("Price_per_sqm")
+        area       = enriched.get("Area")
+
         print(f"\n{'─'*60}")
         print(f"Файл:      {path.name}")
         print(f"Категория: {category}")
-        print(json.dumps(extracted, ensure_ascii=False, indent=2))
+        print(f"\n  [Цена]")
+        if currency == "UAH":
+            print(f"    Исходная:  {raw_price:,.0f} грн (UAH)")
+            print(f"    Курс:      1 USD = {EXCHANGE_RATE} UAH")
+            print(f"    → USD:     {price_usd:,} $")
+        else:
+            print(f"    Исходная:  {raw_price:,} $ (USD) — конвертация не нужна")
+            print(f"    → USD:     {price_usd:,} $")
+        if ppsm and area:
+            print(f"    Площадь:   {area:,.1f} м²")
+            print(f"    → USD/м²:  {ppsm:,} $/м²")
+        print(f"\n  [Все поля]")
+        # В dry-run показываем финальный вид (как будет записан в YAML)
+        display = {k: v for k, v in enriched.items() if k != "Price_USD_raw"}
+        print(json.dumps(display, ensure_ascii=False, indent=2))
         return True
 
     # ── Обновляем frontmatter ─────────────────────────────────────────────
-    # Перечень полей которые разрешено перезаписывать из Claude
+    # Перечень полей которые разрешено перезаписывать из Claude + вычисленные
     allowed_fields: set[str] = set()
     for cls in CATEGORY_REGISTRY.values():
         allowed_fields.update(cls.model_fields.keys())
+    allowed_fields.update({"Price_per_sqm"})  # вычисляемое поле
 
-    for key, value in extracted.items():
-        if key in allowed_fields:
+    for key, value in enriched.items():
+        if key in allowed_fields and key != "Price_USD_raw":
             frontmatter[key] = value
 
     frontmatter["Category"] = category   # записываем определённую категорию
