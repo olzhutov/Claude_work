@@ -6,6 +6,7 @@
       {
         "id": "e99a66d0f03a10a2",
         "type": "tabs",
+        "dimension": 47.33009708737864,
         "children": [
           {
             "id": "40ee8e0d69895392",
@@ -26,6 +27,7 @@
       {
         "id": "b27473e129ee7209",
         "type": "tabs",
+        "dimension": 52.66990291262136,
         "children": [
           {
             "id": "c3fafaad6cf0bf35",
@@ -94,7 +96,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 349.5
+    "width": 349.5,
+    "collapsed": true
   },
   "right": {
     "id": "7f4df387a4a36db0",
@@ -202,7 +205,7 @@
       "marp-slides:Show Slide Preview": false
     }
   },
-  "active": "c3fafaad6cf0bf35",
+  "active": "40ee8e0d69895392",
   "lastOpenFiles": [
     "Объекты/Владимирская_8/wiki/info_brief.pdf",
     "Объекты/Владимирская_8/wiki/presentation.md",
