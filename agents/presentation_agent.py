@@ -824,10 +824,12 @@ def _risks_slide(subject: dict) -> str:
 # ─── Frontmatter + CSS ────────────────────────────────────────────────────────
 
 def _frontmatter(object_name: str, mode: str) -> str:
+    # theme: default + повний Sakura <style> — саме так працює в Marp VS Code.
+    # theme: sakura не реєструється автоматично, тому стиль задаємо inline.
     return "\n".join([
         "---",
         "marp: true",
-        "theme: sakura",
+        "theme: default",
         "paginate: true",
         "size: 16:9",
         f"footer: '{object_name} · {mode} · {date.today().strftime('%d.%m.%Y')}'",

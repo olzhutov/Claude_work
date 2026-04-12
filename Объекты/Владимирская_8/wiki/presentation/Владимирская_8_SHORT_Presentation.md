@@ -1,6 +1,6 @@
 ---
 marp: true
-theme: sakura
+theme: default
 paginate: true
 size: 16:9
 footer: 'Владимирская_8 · SHORT · 12.04.2026'
