@@ -122,6 +122,7 @@ broadway_sakura.py       ← CANONICAL reference for Sakura PPTX style (copy fro
 - **All outputs in Ukrainian** — even when logic/comments are in Russian
 - **Exchange rate never hardcoded** — always passed via `exchange_rate` parameter; raise error if missing when mixing currencies
 - **PPTX style = Sakura** — copy components from `broadway_sakura.py`; slide size must be `10" × 5.625"`, font `Nunito Sans`, bg `#0C1828`
+- **Marp style = Sakura** — для всіх Marp-презентацій використовувати тему Sakura з `.claude/skills/marp-slide/assets/template-sakura.md`; колір фону `#0C1828`, золото `#D5B58A`, шрифт `Nunito Sans`
 - **Gamma style** — accent `#D5B58A`, card bg `#122941`, body `#FCFCFC`
 - **DOCX tables** — always full page width, content-proportional columns → skill `docx-tables-cre`
 
