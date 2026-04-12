@@ -1223,6 +1223,27 @@ def main() -> None:
     print(f"\n  Підсумок: ринкова ставка ${b1['market_rent']:.2f}/м²/міс  "
           f"|  NOI/Cap = ${b2['value']:,.0f}")
 
+    # ── JSON-сайдкар для presentation_agent ──
+    import json as _json
+    metrics_json = xlsx_path.with_name(xlsx_path.stem + "_metrics.json")
+    _json.dump({
+        "object_dir":  args.object_dir,
+        "date":        date.today().isoformat(),
+        "subject":     {k: v for k, v in subject.items()
+                        if isinstance(v, (str, int, float, bool, type(None)))},
+        "b1": {"market_rent": round(b1["market_rent"], 2),
+               "n_analogs": b1["n"],
+               "rent_min": round(min(b1["finals"]), 2),
+               "rent_max": round(max(b1["finals"]), 2)},
+        "b2": {"pgi": round(b2["pgi"]), "noi": round(b2["noi"]),
+               "value": round(b2["value"]), "cap_rate": cap,
+               "vacancy": subject.get("vacancy", 0.15),
+               "opex_pct": subject.get("opex_pct", 0.20)},
+        "discount": discount,
+        "cap_rate": cap,
+    }, open(metrics_json, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    print(f"  JSON-метрики: {metrics_json.name}")
+
 
 if __name__ == "__main__":
     main()
