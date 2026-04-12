@@ -4,31 +4,20 @@
     "type": "split",
     "children": [
       {
-        "id": "1dd137723355122e",
+        "id": "112c9d7bb25e4bbc",
         "type": "tabs",
         "children": [
           {
-            "id": "161783867c341b1c",
+            "id": "4046a6bfa6eca70c",
             "type": "leaf",
             "state": {
-              "type": "marp-preview-view",
+              "type": "empty",
               "state": {},
               "icon": "lucide-file",
-              "title": "Deck Preview"
-            }
-          },
-          {
-            "id": "106ca77cf9f83018",
-            "type": "leaf",
-            "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Граф"
+              "title": "Новая вкладка"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -190,8 +179,9 @@
       "marp-slides:Show Slide Preview": false
     }
   },
-  "active": "106ca77cf9f83018",
+  "active": "4046a6bfa6eca70c",
   "lastOpenFiles": [
+    "Clippings/Offices/Оренда офісу 740 м.кв. Метро Золоті Ворота. 21 $ - Оренда офісів Київ на Olx.md",
     "Объекты/Владимирская_8/wiki/presentation/Владимирская_8_SHORT_Presentation.md",
     "Объекты/Владимирская_8/wiki/presentation/Владимирская_8_FULL_Presentation.md",
     "Объекты/Владимирская_8/wiki/presentation.md",
@@ -235,7 +225,6 @@
     "Clippings/Offices/Офіс із сучасним ремонтом 1600м2 37 500 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices/Офіс в БЦ Мілленіум Володимирська, 12 20 $ - Оренда офісів Київ на Olx.md",
     "Clippings/Offices/Офіс  пров. Несторівський ОСЗ  Центр Золоті ворота 24 000 $ - Оренда офісів Київ на Olx.md",
-    "Clippings/Offices/Оренда офісу дизайнерський LOFT (700 м2) 25 $ - Оренда офісів Київ на Olx.md",
     "Объекты/Inbox/photos/2026-04-11_10-35-56_38.jpg",
     "Объекты/Inbox/photos/2026-04-11_10-35-56_37.jpg"
   ]
