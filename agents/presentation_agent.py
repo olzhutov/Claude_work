@@ -845,12 +845,17 @@ def main() -> None:
     )
     p.add_argument("--object", required=True,
                    help="Ім'я папки об'єкта в Объекты/ (напр. Владимирская_8)")
-    p.add_argument("--mode",   default="SHORT", choices=["SHORT", "FULL"],
+    p.add_argument("--type",   default="SHORT", choices=["SHORT", "FULL"],
+                   dest="mode",
                    help="Режим: SHORT (тизер, 4-6 сл.) або FULL (інвест. звіт, 10-15 сл.)")
+    # Alias --mode для зворотної сумісності
+    p.add_argument("--mode",   default=None, choices=["SHORT", "FULL"],
+                   help=argparse.SUPPRESS)
     args = p.parse_args()
 
+    # --mode перекриває --type якщо передано явно
     object_name = args.object
-    mode        = args.mode
+    mode        = args.mode or "SHORT"
 
     # ── Перевірка наявності папки об'єкта ──
     obj_dir = OBJECTS_DIR / object_name
